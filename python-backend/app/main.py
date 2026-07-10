@@ -77,5 +77,5 @@ async def exception_handler(request: Request, exc: Exception):
     )
 
 # 注册路由
-app.include_router(user_router, prefix="/api", tags=["user"])
-app.include_router(health_router, prefix="/api", tags=["health"])
+app.include_router(user_router, prefix="/api")
+app.include_router(health_router, prefix="/api")
