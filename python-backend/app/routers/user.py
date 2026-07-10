@@ -16,11 +16,17 @@ from app.schemas.user import (
     LoginUserVO,
 )
 from app.services.user_service import UserService
-from app.deps import get_current_user, get_session_id, require_login, require_admin, generate_session_id
+from app.deps import (
+    get_current_user,
+    get_session_id,
+    require_login,
+    require_admin,
+    generate_session_id,
+)
 from app.utils.session import set_session, remove_session
 from app.config import settings
 
-router = APIRouter(prefix="/user", tags=["用户管理"])
+router = APIRouter(prefix="/user", tags=["user"])
 
 
 @router.post("/register", response_model=BaseResponse[int])
