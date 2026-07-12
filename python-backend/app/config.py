@@ -11,39 +11,53 @@ class Settings(BaseSettings):
     # 服务器配置
     server_port: int = 8567
     server_host: str = "0.0.0.0"
-    
+
     # 数据库配置
     db_host: str
     db_port: int = 3306
     db_name: str
     db_user: str
     db_password: str
-    
+
     # Redis 配置
     redis_host: str
     redis_port: int = 6379
     redis_db: int = 0
     redis_password: str = ""
-    
+
     # Session 配置
     session_secret_key: str
     session_max_age: int = 2592000  # 30 天
-    
+
     # 密码加密盐值
     password_salt: str
-    
+
+    # AI 配置
+    dashscope_api_key: str
+    dashscope_model: str = "qwen-plus"
+
+    # Pexels 图片搜索
+    pexels_api_key: str
+
+    # 腾讯云 COS
+    tencent_cos_secret_id: str
+    tencent_cos_secret_key: str
+    tencent_cos_region: str
+    tencent_cos_bucket: str
+    tencent_cos_domain: str = ""
+
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE),
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra="ignore"
+        extra="ignore",
     )
-    
+
     @property
     def database_url(self) -> str:
         """获取数据库连接 URL"""
         return f"mysql+pymysql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}?charset=utf8mb4"
-    
+
     @property
     def redis_url(self) -> str:
         """获取 Redis 连接 URL"""
