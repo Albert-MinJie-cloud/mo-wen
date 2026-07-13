@@ -4,7 +4,9 @@
 // API 唯一标识：
 import * as user from "./user";
 import * as health from "./health";
+import * as article from "./article";
 export default {
   user,
   health,
+  article,
 };
