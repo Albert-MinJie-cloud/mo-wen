@@ -3,6 +3,88 @@ declare namespace API {
     SESSION?: string | null;
   };
 
+  type ArticleCreateRequest = {
+    /** Topic 选题 */
+    topic: string;
+    /** Style 文章风格：tech/emotional/educational/humorous */
+    style?: string | null;
+    /** Enabledimagemethods 允许的配图方式列表（为空表示支持所有方式） */
+    enabledImageMethods?: string[] | null;
+  };
+
+  type ArticleQueryRequest = {
+    /** Current 当前页码 */
+    current?: number;
+    /** Pagesize 每页大小 */
+    pageSize?: number;
+    /** Sortfield 排序字段 */
+    sortField?: string | null;
+    /** Sortorder 排序顺序 */
+    sortOrder?: string | null;
+    /** Id 文章 ID */
+    id?: number | null;
+    /** Taskid 任务 ID */
+    taskId?: string | null;
+    /** Userid 用户 ID */
+    userId?: number | null;
+    /** Topic 选题 */
+    topic?: string | null;
+    /** Status 状态 */
+    status?: string | null;
+  };
+
+  type ArticleVO = {
+    /** Id */
+    id: number;
+    /** Taskid */
+    taskId: string;
+    /** Userid */
+    userId: number;
+    /** Topic */
+    topic: string;
+    /** Userdescription */
+    userDescription?: string | null;
+    /** Style */
+    style?: string | null;
+    /** Maintitle */
+    mainTitle?: string | null;
+    /** Subtitle */
+    subTitle?: string | null;
+    /** Titleoptions */
+    titleOptions?: TitleOption[] | null;
+    /** Outline */
+    outline?: any[] | null;
+    /** Content */
+    content?: string | null;
+    /** Fullcontent */
+    fullContent?: string | null;
+    /** Coverimage */
+    coverImage?: string | null;
+    /** Images */
+    images?: any[] | null;
+    /** Status */
+    status: string;
+    /** Phase */
+    phase?: string | null;
+    /** Errormessage */
+    errorMessage?: string | null;
+    /** Createtime */
+    createTime: string;
+    /** Completedtime */
+    completedTime?: string | null;
+    /** Updatetime */
+    updateTime: string;
+  };
+
+  type BaseResponseArticleVO_ = {
+    /** Code 状态码 */
+    code?: number;
+    /** 响应数据 */
+    data?: ArticleVO | null;
+    /** Message 响应消息 */
+    message?: string;
+  };
+
   type BaseResponseBool_ = {
     /** Code 状态码 */
     code?: number;
@@ -57,6 +139,14 @@ declare namespace API {
     message?: string;
   };
 
+  type createArticleApiArticleCreatePostParams = {
+    SESSION?: string | null;
+  };
+
+  type deleteArticleApiArticleDeletePostParams = {
+    SESSION?: string | null;
+  };
+
   type DeleteRequest = {
     /** Id 要删除的 ID */
     id: number;
@@ -66,7 +156,17 @@ declare namespace API {
     SESSION?: string | null;
   };
 
+  type getArticleApiArticleTaskIdGetParams = {
+    task_id: string;
+    SESSION?: string | null;
+  };
+
   type getLoginUserApiUserGetLoginGetParams = {
+    SESSION?: string | null;
+  };
+
+  type getProgressApiArticleProgressTaskIdGetParams = {
+    task_id: string;
     SESSION?: string | null;
   };
 
@@ -77,6 +177,10 @@ declare namespace API {
   type HTTPValidationError = {
     /** Detail */
     detail?: ValidationError[];
+  };
+
+  type listArticleApiArticleListPostParams = {
+    SESSION?: string | null;
   };
 
   type listUsersByPageApiUserListPagePostParams = {
@@ -108,6 +212,13 @@ declare namespace API {
 
   type logoutApiUserLogoutPostParams = {
     SESSION?: string | null;
+  };
+
+  type TitleOption = {
+    /** Maintitle */
+    mainTitle: string;
+    /** Subtitle */
+    subTitle: string;
   };
 
   type updateUserApiUserUpdatePostParams = {
