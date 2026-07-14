@@ -5,7 +5,8 @@ import { useLoginUserStore } from "@/stores/loginUser";
 import EditorMockup from "@/components/EditorMockup.vue";
 import Button from "@/components/Button.vue";
 // import { listArticle } from "@/api/articleController";
-import dayjs from "dayjs";
+import { formatTime } from "@/utils/format";
+import { ARTICLE_STATUS_MAP } from "@/utils/article";
 import {
   FileTextOutlined,
   OrderedListOutlined,
@@ -48,12 +49,6 @@ const loadRecentArticles = async () => {
   } finally {
     loadingArticles.value = false;
   }
-};
-
-// 格式化时间
-const formatTime = (time: string | undefined) => {
-  if (!time) return "--";
-  return dayjs(time).format("MM-DD HH:mm");
 };
 
 // 功能卡片数据
@@ -130,9 +125,7 @@ onMounted(() => {
           <Button variant="primary" size="lg" @click="goToCreate">
             立即创作爆款
           </Button>
-          <Button variant="secondary" size="lg">
-            查看案例
-          </Button>
+          <Button variant="secondary" size="lg"> 查看案例 </Button>
         </div>
 
         <!-- <p class="hero-tips">
@@ -219,7 +212,7 @@ onMounted(() => {
                 <div class="article-meta">
                   <span class="article-time">
                     <ClockCircleOutlined />
-                    {{ formatTime(article.createTime) }}
+                    {{ formatTime(article.createTime, "MM-DD HH:mm") }}
                   </span>
                   <span
                     :class="[
@@ -227,13 +220,7 @@ onMounted(() => {
                       `status-${article.status?.toLowerCase()}`,
                     ]"
                   >
-                    {{
-                      article.status === "COMPLETED"
-                        ? "已完成"
-                        : article.status === "PROCESSING"
-                        ? "生成中"
-                        : "等待中"
-                    }}
+                    {{ ARTICLE_STATUS_MAP[article.status]?.text || article.status }}
                   </span>
                 </div>
               </div>
