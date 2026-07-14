@@ -86,34 +86,6 @@ class ArticleAgentService:
             subTitle=title_options[0].sub_title,
         )
 
-    async def agent2_generate_outline(
-        self, state: ArticleState, stream_handler: Callable[[str], None]
-    ):
-        """智能体2：生成大纲（流式输出）"""
-        description_section = ""
-        if state.user_description and state.user_description.strip():
-            description_section = PromptConstant.AGENT2_DESCRIPTION_SECTION.replace(
-                "{userDescription}",
-                state.user_description,
-            )
-
-        prompt = (
-            PromptConstant.AGENT2_OUTLINE_PROMPT.replace(
-                "{mainTitle}", state.title.main_title
-            )
-            .replace("{subTitle}", state.title.sub_title)
-            .replace("{descriptionSection}", description_section)
-        )
-        prompt += self._get_style_prompt(state.style)
-
-        content = await self._call_llm_with_streaming(
-            prompt, stream_handler, SseMessageTypeEnum.AGENT2_STREAMING
-        )
-
-        outline_data = self._parse_json_response(content, "大纲")
-        sections = [OutlineSection(**section) for section in outline_data["sections"]]
-        state.outline = OutlineResult(sections=sections)
-
     async def agent3_generate_content(
         self, state: ArticleState, stream_handler: Callable[[str], None]
     ):
@@ -239,19 +211,32 @@ class ArticleAgentService:
 
         return "".join(content_builder)
 
-    def _parse_json_response(self, content: str, name: str, is_list: bool = False):
-        """解析 JSON 响应，自动处理 None 和 markdown 代码块包裹"""
-        if not content:
-            raise RuntimeError(f"{name}返回为空")
-        # 提取 markdown 代码块中的 JSON
-        cleaned = content.strip()
-        match = re.search(r"```(?:json)?\s*([\s\S]*?)```", cleaned)
-        if match:
-            cleaned = match.group(1).strip()
+    def _parse_json_response(self, content: str, name: str) -> dict:
+        """解析 JSON 响应"""
         try:
-            return json.loads(cleaned)
+            result = json.loads(content)
+            if not isinstance(result, dict):
+                raise ValueError("响应不是 JSON 对象")
+            return result
         except json.JSONDecodeError as e:
-            logger.error(f"{name}解析失败, content={cleaned[:500]}, error={e}")
+            logger.error(f"{name}解析失败, content={content}, error={e}")
+            raise RuntimeError(f"{name}解析失败")
+        except ValueError as e:
+            logger.error(f"{name}解析失败, content={content}, error={e}")
+            raise RuntimeError(f"{name}解析失败")
+
+    def _parse_json_list_response(self, content: str, name: str) -> list:
+        """解析 JSON 数组响应"""
+        try:
+            result = json.loads(content)
+            if not isinstance(result, list):
+                raise ValueError("响应不是 JSON 数组")
+            return result
+        except json.JSONDecodeError as e:
+            logger.error(f"{name}解析失败, content={content}, error={e}")
+            raise RuntimeError(f"{name}解析失败")
+        except ValueError as e:
+            logger.error(f"{name}解析失败, content={content}, error={e}")
             raise RuntimeError(f"{name}解析失败")
 
     def _build_image_result(
@@ -399,3 +384,124 @@ class ArticleAgentService:
             "SVG_DIAGRAM": "- SVG_DIAGRAM: 在 prompt 字段描述示意图需求（中文），说明要表达的概念和关系。keywords 留空。\n  示例：绘制思维导图样式的图，中心是'自律'，周围4个分支：习惯、环境、反馈、系统",
         }
         return guides.get(method_str, "")
+
+    async def execute_phase1_generate_titles(
+        self, state: ArticleState, stream_handler: Callable[[str], None]
+    ):
+        """
+        阶段1：生成标题方案
+
+        Args:
+            state: 文章状态
+            stream_handler: 流式输出处理器
+        """
+        try:
+            logger.info(f"阶段1：开始生成标题方案, taskId={state.task_id}")
+            await self.agent1_generate_title_options(state)
+            stream_handler(SseMessageTypeEnum.AGENT1_COMPLETE.value)
+            logger.info(
+                "阶段1：标题方案生成成功, taskId=%s, optionsCount=%s",
+                state.task_id,
+                len(state.title_options or []),
+            )
+        except Exception as e:
+            logger.error(f"阶段1失败, taskId={state.task_id}, error={e}")
+            raise RuntimeError(f"标题方案生成失败: {str(e)}")
+
+    async def execute_phase2_generate_outline(
+        self, state: ArticleState, stream_handler: Callable[[str], None]
+    ):
+        """阶段2：生成大纲"""
+        try:
+            logger.info(f"阶段2：开始生成大纲, taskId={state.task_id}")
+            await self.agent2_generate_outline(state, stream_handler)
+            stream_handler(SseMessageTypeEnum.AGENT2_COMPLETE.value)
+            logger.info(f"阶段2：大纲生成成功, taskId={state.task_id}")
+        except Exception as e:
+            logger.error(f"阶段2失败, taskId={state.task_id}, error={e}")
+            raise RuntimeError(f"大纲生成失败: {str(e)}")
+
+    async def execute_phase3_generate_content(
+        self, state: ArticleState, stream_handler: Callable[[str], None]
+    ):
+        """阶段3：生成正文、配图和合并内容"""
+        try:
+            logger.info(f"阶段3：开始生成正文, taskId={state.task_id}")
+            await self.agent3_generate_content(state, stream_handler)
+            stream_handler(SseMessageTypeEnum.AGENT3_COMPLETE.value)
+
+            logger.info(f"阶段3：开始分析配图需求, taskId={state.task_id}")
+            await self.agent4_analyze_image_requirements(state)
+            stream_handler(SseMessageTypeEnum.AGENT4_COMPLETE.value)
+
+            logger.info(f"阶段3：开始生成配图, taskId={state.task_id}")
+            await self.agent5_generate_images(state, stream_handler)
+            stream_handler(SseMessageTypeEnum.AGENT5_COMPLETE.value)
+
+            logger.info(f"阶段3：开始图文合成, taskId={state.task_id}")
+            self.merge_images_into_content(state)
+            stream_handler(SseMessageTypeEnum.MERGE_COMPLETE.value)
+        except Exception as e:
+            logger.error(f"阶段3失败, taskId={state.task_id}, error={e}")
+            raise RuntimeError(f"正文生成失败: {str(e)}")
+
+    async def agent1_generate_title_options(self, state: ArticleState):
+        """智能体1：生成标题方案（3-5个）"""
+        prompt = PromptConstant.AGENT1_TITLE_PROMPT.replace("{topic}", state.topic)
+        prompt += self._get_style_prompt(state.style)
+
+        content = await self._call_llm(prompt)
+        title_options_data = self._parse_json_list_response(content, "标题方案")
+        state.title_options = [TitleOption(**item) for item in title_options_data]
+        logger.info("智能体1：标题方案生成成功, count=%s", len(state.title_options))
+
+    async def agent2_generate_outline(
+        self, state: ArticleState, stream_handler: Callable[[str], None]
+    ):
+        """智能体2：生成大纲（流式输出）"""
+        description_section = ""
+        if state.user_description and state.user_description.strip():
+            description_section = PromptConstant.AGENT2_DESCRIPTION_SECTION.replace(
+                "{userDescription}",
+                state.user_description,
+            )
+
+        prompt = (
+            PromptConstant.AGENT2_OUTLINE_PROMPT.replace(
+                "{mainTitle}", state.title.main_title
+            )
+            .replace("{subTitle}", state.title.sub_title)
+            .replace("{descriptionSection}", description_section)
+        )
+        prompt += self._get_style_prompt(state.style)
+
+        content = await self._call_llm_with_streaming(
+            prompt, stream_handler, SseMessageTypeEnum.AGENT2_STREAMING
+        )
+        outline_data = self._parse_json_response(content, "大纲")
+        sections = [OutlineSection(**section) for section in outline_data["sections"]]
+        state.outline = OutlineResult(sections=sections)
+        logger.info(f"智能体2：大纲生成成功, sections={len(state.outline.sections)}")
+
+    async def ai_modify_outline(
+        self,
+        main_title: str,
+        sub_title: str,
+        current_outline: List[OutlineSection],
+        modify_suggestion: str,
+    ) -> List[OutlineSection]:
+        """AI 修改大纲"""
+        current_outline_json = json.dumps(
+            [item.model_dump() for item in current_outline],
+            ensure_ascii=False,
+        )
+        prompt = (
+            PromptConstant.AI_MODIFY_OUTLINE_PROMPT.replace("{mainTitle}", main_title)
+            .replace("{subTitle}", sub_title)
+            .replace("{currentOutline}", current_outline_json)
+            .replace("{modifySuggestion}", modify_suggestion)
+        )
+        content = await self._call_llm(prompt)
+        outline_data = self._parse_json_response(content, "修改后的大纲")
+        sections = [OutlineSection(**section) for section in outline_data["sections"]]
+        return sections

@@ -1,4 +1,5 @@
 import uuid
+import logging
 import json
 from typing import List, Optional, Tuple
 from datetime import datetime
@@ -6,12 +7,24 @@ from datetime import datetime
 from databases import Database
 from sqlalchemy import and_, func, select
 
-from app.exceptions import BusinessException, ErrorCode, throw_if_not
+from app.exceptions import (
+    BusinessException,
+    ErrorCode,
+    throw_if,
+    throw_if_not,
+)
 from app.schemas.article import ArticleState, ArticleVO, ArticleQueryRequest
-from app.models.article import Article
+from app.schemas.article import (
+    OutlineSection,
+    TitleOption,
+)
 from app.schemas.user import LoginUserVO
-from app.models.enums import ArticleStatusEnum, ImageMethodEnum
+from app.models.article import Article
+from app.models.enums import ArticlePhaseEnum, ArticleStatusEnum, ImageMethodEnum
 from app.constants.user import UserConstant
+from app.services.article_agent_service import ArticleAgentService
+
+logger = logging.getLogger(__name__)
 
 
 class ArticleService:
@@ -37,9 +50,9 @@ class ArticleService:
     ) -> str:
         task_id = str(uuid.uuid4())
         query = """
-            INSERT INTO article (taskId, userId, topic, style, status, createTime)
-            VALUES (:taskId, :userId, :topic, :style, :status, :createTime)
-        """
+        INSERT INTO article (taskId, userId, topic, style, status, createTime, enabledImageMethods)
+        VALUES (:taskId, :userId, :topic, :style, :status, :createTime, :enabledImageMethods)
+    """
         await self.db.execute(
             query=query,
             values={
@@ -49,6 +62,9 @@ class ArticleService:
                 "style": style,
                 "status": ArticleStatusEnum.PENDING.value,
                 "createTime": datetime.now(),
+                "enabledImageMethods": json.dumps(enabled_image_methods)
+                if enabled_image_methods
+                else None,
             },
         )
         return task_id
@@ -237,3 +253,157 @@ class ArticleService:
             else None,
             updateTime=article_dict["updateTime"].isoformat(),
         )
+
+    async def update_phase(self, task_id: str, phase: ArticlePhaseEnum):
+        """更新文章阶段"""
+        article = await self.get_by_task_id(task_id)
+        if not article:
+            logger.error("文章记录不存在, taskId=%s", task_id)
+            return
+
+        current_phase_value = article["phase"] or ArticlePhaseEnum.PENDING.value
+        try:
+            current_phase = ArticlePhaseEnum(current_phase_value)
+        except ValueError as exc:
+            raise BusinessException(ErrorCode.OPERATION_ERROR, "当前阶段非法") from exc
+        if current_phase != phase and not current_phase.can_transition_to(phase):
+            raise BusinessException(ErrorCode.OPERATION_ERROR, "非法阶段流转")
+
+        await self.db.execute(
+            query="UPDATE article SET phase = :phase WHERE taskId = :taskId",
+            values={"phase": phase.value, "taskId": task_id},
+        )
+
+    async def save_title_options(self, task_id: str, title_options: List[TitleOption]):
+        """保存标题方案列表"""
+        await self.db.execute(
+            query="UPDATE article SET titleOptions = :titleOptions WHERE taskId = :taskId",
+            values={
+                "taskId": task_id,
+                "titleOptions": json.dumps(
+                    [item.model_dump(by_alias=True) for item in title_options],
+                    ensure_ascii=False,
+                ),
+            },
+        )
+
+    async def confirm_title(
+        self,
+        task_id: str,
+        selected_main_title: str,
+        selected_sub_title: str,
+        user_description: Optional[str],
+        login_user: LoginUserVO,
+    ):
+        """确认标题并进入大纲阶段"""
+        article = await self.get_by_task_id(task_id)
+        throw_if_not(article, ErrorCode.NOT_FOUND_ERROR, "文章不存在")
+        self._check_article_permission(article, login_user)
+        throw_if(
+            article["phase"] != ArticlePhaseEnum.TITLE_SELECTING.value,
+            ErrorCode.OPERATION_ERROR,
+            "当前阶段不允许确认标题",
+        )
+
+        await self.db.execute(
+            query="""
+                UPDATE article
+                SET mainTitle = :mainTitle,
+                    subTitle = :subTitle,
+                    userDescription = :userDescription,
+                    phase = :phase
+                WHERE taskId = :taskId
+            """,
+            values={
+                "taskId": task_id,
+                "mainTitle": selected_main_title,
+                "subTitle": selected_sub_title,
+                "userDescription": user_description,
+                "phase": ArticlePhaseEnum.OUTLINE_GENERATING.value,
+            },
+        )
+
+    async def confirm_outline(
+        self,
+        task_id: str,
+        outline: List[OutlineSection],
+        login_user: LoginUserVO,
+    ):
+        """确认大纲并进入正文阶段"""
+        article = await self.get_by_task_id(task_id)
+        throw_if_not(article, ErrorCode.NOT_FOUND_ERROR, "文章不存在")
+        self._check_article_permission(article, login_user)
+        throw_if(
+            article["phase"] != ArticlePhaseEnum.OUTLINE_EDITING.value,
+            ErrorCode.OPERATION_ERROR,
+            "当前阶段不允许确认大纲",
+        )
+
+        await self.db.execute(
+            query="""
+                UPDATE article
+                SET outline = :outline,
+                    phase = :phase
+                WHERE taskId = :taskId
+            """,
+            values={
+                "taskId": task_id,
+                "outline": json.dumps(
+                    [item.model_dump() for item in outline], ensure_ascii=False
+                ),
+                "phase": ArticlePhaseEnum.CONTENT_GENERATING.value,
+            },
+        )
+
+    async def save_outline(self, task_id: str, outline: List[OutlineSection]):
+        """保存大纲内容（不推进阶段）"""
+        await self.db.execute(
+            query="UPDATE article SET outline = :outline WHERE taskId = :taskId",
+            values={
+                "taskId": task_id,
+                "outline": json.dumps(
+                    [item.model_dump() for item in outline], ensure_ascii=False
+                ),
+            },
+        )
+
+    async def ai_modify_outline(
+        self,
+        task_id: str,
+        modify_suggestion: str,
+        login_user: LoginUserVO,
+    ) -> List[OutlineSection]:
+        """AI 修改大纲"""
+        article = await self.get_by_task_id(task_id)
+        throw_if_not(article, ErrorCode.NOT_FOUND_ERROR, "文章不存在")
+        self._check_article_permission(article, login_user)
+        throw_if(
+            article["phase"] != ArticlePhaseEnum.OUTLINE_EDITING.value,
+            ErrorCode.OPERATION_ERROR,
+            "当前阶段不允许 AI 修改大纲",
+        )
+        throw_if(
+            not article["outline"], ErrorCode.OPERATION_ERROR, "当前文章尚未生成大纲"
+        )
+
+        current_outline = [
+            OutlineSection(**item) for item in json.loads(article["outline"])
+        ]
+        agent_service = ArticleAgentService()
+        modified_outline = await agent_service.ai_modify_outline(
+            main_title=article["mainTitle"],
+            sub_title=article["subTitle"],
+            current_outline=current_outline,
+            modify_suggestion=modify_suggestion,
+        )
+        await self.db.execute(
+            query="UPDATE article SET outline = :outline WHERE taskId = :taskId",
+            values={
+                "taskId": task_id,
+                "outline": json.dumps(
+                    [item.model_dump() for item in modified_outline],
+                    ensure_ascii=False,
+                ),
+            },
+        )
+        return modified_outline

@@ -8,6 +8,9 @@ from app.schemas.article import (
     ArticleCreateRequest,
     ArticleQueryRequest,
     ArticleVO,
+    ArticleConfirmTitleRequest,
+    ArticleConfirmOutlineRequest,
+    ArticleAiModifyOutlineRequest,
 )
 from app.schemas.user import LoginUserVO
 from app.services.article_service import ArticleService
@@ -33,14 +36,18 @@ async def create_article(
     )
 
     service = ArticleService(db)
+
+    # 检查并消耗配额 + 创建文章任务（在同一事务中）
     task_id = await service.create_article_task_with_quota_check(
         request.topic, current_user, request.style, request.enabled_image_methods
     )
 
-    # 用 asyncio.create_task 异步执行文章生成，不等待完成
+    # 异步执行阶段1：生成标题方案
     asyncio.create_task(
-        article_async_service.execute_article_generation(
-            task_id, request.topic, request.style, request.enabled_image_methods
+        article_async_service.execute_phase1(
+            task_id,
+            request.topic,
+            request.style,
         )
     )
 
@@ -108,3 +115,57 @@ async def delete_article(
     service = ArticleService(db)
     result = await service.delete_article(request.id, current_user)
     return BaseResponse.success(data=result, message="删除成功")
+
+
+@router.post("/confirm-title", response_model=BaseResponse[None])
+async def confirm_title(
+    request: ArticleConfirmTitleRequest,
+    db: Database = Depends(get_db),
+    current_user: LoginUserVO = Depends(require_login),
+):
+    """确认标题并输入补充描述"""
+    service = ArticleService(db)
+    await service.confirm_title(
+        task_id=request.task_id,
+        selected_main_title=request.selected_main_title,
+        selected_sub_title=request.selected_sub_title,
+        user_description=request.user_description,
+        login_user=current_user,
+    )
+    asyncio.create_task(article_async_service.execute_phase2(request.task_id))
+    return BaseResponse.success(data=None)
+
+
+@router.post("/confirm-outline", response_model=BaseResponse[None])
+async def confirm_outline(
+    request: ArticleConfirmOutlineRequest,
+    db: Database = Depends(get_db),
+    current_user: LoginUserVO = Depends(require_login),
+):
+    """确认大纲"""
+    service = ArticleService(db)
+    await service.confirm_outline(
+        task_id=request.task_id,
+        outline=request.outline,
+        login_user=current_user,
+    )
+    asyncio.create_task(article_async_service.execute_phase3(request.task_id))
+    return BaseResponse.success(data=None)
+
+
+@router.post("/ai-modify-outline", response_model=BaseResponse[list])
+async def ai_modify_outline(
+    request: ArticleAiModifyOutlineRequest,
+    db: Database = Depends(get_db),
+    current_user: LoginUserVO = Depends(require_login),
+):
+    """AI 修改大纲"""
+    service = ArticleService(db)
+    modified_outline = await service.ai_modify_outline(
+        task_id=request.task_id,
+        modify_suggestion=request.modify_suggestion,
+        login_user=current_user,
+    )
+    return BaseResponse.success(
+        data=[section.model_dump() for section in modified_outline]
+    )

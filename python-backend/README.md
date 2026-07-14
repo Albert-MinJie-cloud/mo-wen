@@ -44,8 +44,13 @@ python-backend/
 ├── pyproject.toml            # 依赖管理
 ├── uv.lock                   # 依赖锁定文件
 ├── docs/                     # 技术文档
+│   ├── 项目构成.md
+│   ├── 项目依赖.md
+│   ├── 文章模块开发文档.md
 │   ├── image_service_strategy_refactor.md
 │   └── known_tech_debt.md
+├── plan/                     # 设计规划
+│   └── 用户交互增强.md
 ├── question/                 # 问题与审查记录
 │   └── code_review_2026-07-14.md
 └── app/
@@ -62,10 +67,10 @@ python-backend/
     │   └── sse_manager.py    # SSE 连接管理
     ├── models/               # SQLAlchemy ORM 模型
     │   ├── article.py        # 文章表
-    │   ├── enums.py          # 枚举类型（状态、风格、配图方式、SSE 消息）
+    │   ├── enums.py          # 枚举（状态、阶段、风格、配图方式、SSE 消息）
     │   └── user.py           # 用户表
     ├── routers/              # 路由层
-    │   ├── article.py        # 文章接口（创建/列表/详情/SSE 进度）
+    │   ├── article.py        # 文章接口（创建/列表/详情/确认标题/确认大纲/AI修改大纲/SSE进度）
     │   ├── health.py         # 健康检查接口
     │   └── user.py           # 用户接口
     ├── schemas/              # Pydantic 模型（请求/响应）
@@ -94,11 +99,63 @@ python-backend/
 
 ## 智能体流水线
 
+采用 **Human-in-the-Loop** 设计，AI 在关键节点暂停等待用户确认后再继续。
+
+### 阶段状态机
+
 ```
-智能体1（标题）→ 智能体2（大纲）→ 智能体3（正文）→ 智能体4（配图需求）→ 智能体5（配图生成）→ 图文合成
+PENDING → TITLE_GENERATING → TITLE_SELECTING → OUTLINE_GENERATING → OUTLINE_EDITING → CONTENT_GENERATING → COMPLETED
+                                    ↑ 用户确认标题                            ↑ 用户确认大纲
 ```
 
-配图支持 6 种来源，通过策略模式统一管理：
+- **TITLE_SELECTING** 和 **OUTLINE_EDITING** 为两个用户介入点
+- `status` 字段追踪粗粒度生命周期（PENDING → PROCESSING → COMPLETED/FAILED）
+- `phase` 字段追踪细粒度阶段（ArticlePhaseEnum）
+
+### 三阶段异步执行
+
+| 阶段 | 触发方式 | 执行内容 | SSE 结束事件 |
+|------|---------|---------|-------------|
+| 阶段1 | `POST /article/create` | Agent 1 生成多组标题方案 | `TITLES_GENERATED` |
+| 阶段2 | `POST /article/confirm-title` | Agent 2 流式生成大纲 | `OUTLINE_GENERATED` |
+| 阶段3 | `POST /article/confirm-outline` | Agent 3+4+5 正文、配图、合成 | `ALL_COMPLETE` |
+
+每个阶段通过独立的 SSE 连接推送进度。
+
+### API 接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/article/create` | 创建文章任务（触发阶段1） |
+| POST | `/api/article/confirm-title` | 确认标题（触发阶段2） |
+| POST | `/api/article/confirm-outline` | 确认大纲（触发阶段3） |
+| POST | `/api/article/ai-modify-outline` | AI 修改大纲 |
+| GET | `/api/article/progress/{task_id}` | SSE 进度推送 |
+| GET | `/api/article/{task_id}` | 获取文章详情 |
+| POST | `/api/article/list` | 分页查询文章列表 |
+| POST | `/api/article/delete` | 删除文章（软删除） |
+
+全部接口需要登录态。
+
+### SSE 消息类型
+
+| 类型 | 说明 |
+|------|------|
+| `TITLES_GENERATED` | 标题方案生成完成，携带 titleOptions（等待用户选择） |
+| `AGENT2_STREAMING` | 大纲流式输出 |
+| `OUTLINE_GENERATED` | 大纲生成完成，携带 outline（等待用户编辑） |
+| `AGENT3_STREAMING` | 正文流式输出 |
+| `AGENT3_COMPLETE` | 正文生成完成 |
+| `AGENT4_COMPLETE` | 配图需求分析完成 |
+| `IMAGE_COMPLETE` | 单张配图完成 |
+| `AGENT5_COMPLETE` | 配图生成完成 |
+| `MERGE_COMPLETE` | 图文合成完成 |
+| `ALL_COMPLETE` | 全部完成 |
+| `ERROR` | 错误 |
+
+### 配图支持
+
+6 种来源，通过策略模式统一管理：
 
 | 来源 | 说明 |
 |------|------|
