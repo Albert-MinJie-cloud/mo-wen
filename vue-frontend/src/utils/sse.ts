@@ -33,7 +33,7 @@ export const connectSSE = (
       onMessage(message);
 
       // 检查是否完成
-      if (message.type === "ALL_COMPLETE" || message.type === "ERROR") {
+      if (message.type === "ALL_COMPLETE" || message.type === "ERROR" || message.type === "TITLES_GENERATED" || message.type === "OUTLINE_GENERATED") {
         eventSource.close();
         onComplete?.();
       }

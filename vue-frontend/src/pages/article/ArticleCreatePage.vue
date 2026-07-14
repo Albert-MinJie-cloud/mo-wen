@@ -2,7 +2,13 @@
 import { ref, reactive, computed } from "vue";
 import { useRouter } from "vue-router";
 import { message } from "@/message";
-import { createArticleApiArticleCreatePost, getArticleApiArticleTaskIdGet } from "@/api/article";
+import {
+  createArticleApiArticleCreatePost,
+  getArticleApiArticleTaskIdGet,
+  confirmTitleApiArticleConfirmTitlePost,
+  confirmOutlineApiArticleConfirmOutlinePost,
+  aiModifyOutlineApiArticleAiModifyOutlinePost,
+} from "@/api/article";
 import { connectSSE, closeSSE, type SSEMessage } from "@/utils/sse";
 import { markdownToHtml } from "@/utils/markdown";
 import { ARTICLE_STYLE_OPTIONS, IMAGE_METHOD_OPTIONS, getWordCount } from "@/utils/article";
@@ -22,6 +28,10 @@ import {
   RocketOutlined,
   ArrowRightOutlined,
   InfoCircleOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  DeleteOutlined,
+  CloseOutlined,
 } from "@ant-design/icons-vue";
 
 const router = useRouter();
@@ -36,6 +46,14 @@ const errorMessage = ref("");
 const topic = ref("");
 const style = ref<string | null>(null);
 const enabledImageMethods = ref<string[]>([]);
+
+// ============ 阶段交互状态 ============
+const currentPhase = ref<1 | 2 | 3>(1);
+const userDescription = ref("");
+const showTitleConfirm = ref(false);
+const showOutlineEdit = ref(false);
+const modifySuggestion = ref("");
+const isModifyingOutline = ref(false);
 
 // 热门选题
 const hotTopics = [
@@ -105,6 +123,12 @@ const elapsedDisplay = computed(() => {
   return `${min.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
 });
 
+const phaseSteps = computed(() => [
+  { label: "选择标题", status: currentPhase.value > 1 ? "done" : currentPhase.value === 1 ? "active" : "waiting" },
+  { label: "编辑大纲", status: currentPhase.value > 2 ? "done" : currentPhase.value === 2 ? "active" : "waiting" },
+  { label: "生成内容", status: currentPhase.value === 3 ? "active" : "waiting" },
+] as { label: string; status: "done" | "active" | "waiting" }[]);
+
 // ============ 表单方法 ============
 function selectHotTopic(topicText: string) {
   topic.value = topicText;
@@ -144,17 +168,34 @@ function stopTimer() {
 function handleSSEMessage(data: SSEMessage) {
   switch (data.type) {
     case "AGENT1_COMPLETE":
+      // 标题生成的中间进度（Agent内部消息），暂不处理
+      break;
+
+    case "TITLES_GENERATED":
       updateAgentStep("AGENT1", "done");
       if (data.titleOptions) titleOptions.value = data.titleOptions;
+      closeSSE(eventSource.value);
+      eventSource.value = null;
+      showTitleConfirm.value = true;
+      currentPhase.value = 1;
       break;
 
     case "AGENT2_STREAMING":
       updateAgentStep("AGENT2", "processing");
       if (data.content) outlineText.value += data.content;
       break;
+
     case "AGENT2_COMPLETE":
+      // 大纲生成的中间进度（Agent内部消息），暂不处理
+      break;
+
+    case "OUTLINE_GENERATED":
       updateAgentStep("AGENT2", "done");
       if (data.outline) outlineSections.value = data.outline;
+      closeSSE(eventSource.value);
+      eventSource.value = null;
+      showOutlineEdit.value = true;
+      currentPhase.value = 2;
       break;
 
     case "AGENT3_STREAMING":
@@ -195,6 +236,146 @@ function handleSSEMessage(data: SSEMessage) {
       message.error(errorMessage.value);
       break;
   }
+}
+
+// ============ 阶段交互 ============
+async function confirmTitle() {
+  if (selectedTitleIndex.value < 0) {
+    message.warning("请先选择一个标题");
+    return;
+  }
+  const selected = titleOptions.value[selectedTitleIndex.value];
+  try {
+    await confirmTitleApiArticleConfirmTitlePost(
+      {},
+      {
+        taskId: taskId.value,
+        selectedMainTitle: selected.mainTitle,
+        selectedSubTitle: selected.subTitle,
+        userDescription: userDescription.value || undefined,
+      }
+    );
+    // 重置阶段2状态
+    outlineText.value = "";
+    outlineSections.value = [];
+    showTitleConfirm.value = false;
+    currentPhase.value = 2;
+    // 开启阶段2 SSE
+    eventSource.value = connectSSE(taskId.value, {
+      onMessage: handleSSEMessage,
+      onError: () => {
+        stopTimer();
+        isCreating.value = false;
+        message.error("连接中断，请刷新重试");
+      },
+      onComplete: () => {
+        eventSource.value = null;
+      },
+    });
+  } catch (e: any) {
+    message.error(e?.message || "确认标题失败");
+  }
+}
+
+async function confirmOutline() {
+  try {
+    await confirmOutlineApiArticleConfirmOutlinePost(
+      {},
+      {
+        taskId: taskId.value,
+        outline: outlineSections.value,
+      }
+    );
+    // 重置阶段3状态
+    contentText.value = "";
+    generatedImages.value = [];
+    showOutlineEdit.value = false;
+    currentPhase.value = 3;
+    updateAgentStep("AGENT1", "done");
+    updateAgentStep("AGENT2", "done");
+    // 开启阶段3 SSE
+    eventSource.value = connectSSE(taskId.value, {
+      onMessage: handleSSEMessage,
+      onError: () => {
+        stopTimer();
+        isCreating.value = false;
+        message.error("连接中断，请刷新重试");
+      },
+      onComplete: () => {
+        eventSource.value = null;
+      },
+    });
+  } catch (e: any) {
+    message.error(e?.message || "确认大纲失败");
+  }
+}
+
+async function aiModifyOutline() {
+  if (!modifySuggestion.value.trim()) {
+    message.warning("请输入修改建议");
+    return;
+  }
+  isModifyingOutline.value = true;
+  try {
+    const res = await aiModifyOutlineApiArticleAiModifyOutlinePost(
+      {},
+      {
+        taskId: taskId.value,
+        modifySuggestion: modifySuggestion.value.trim(),
+      }
+    );
+    if (res.data.code === 0 && res.data.data) {
+      outlineSections.value = res.data.data;
+      modifySuggestion.value = "";
+      message.success("大纲已修改");
+    }
+  } catch (e: any) {
+    message.error(e?.message || "AI 修改失败");
+  } finally {
+    isModifyingOutline.value = false;
+  }
+}
+
+// ============ 大纲编辑 ============
+function addSection() {
+  const newSection: API.OutlineSection = {
+    section: outlineSections.value.length + 1,
+    title: "",
+    points: [],
+  };
+  outlineSections.value.push(newSection);
+}
+
+function removeSection(index: number) {
+  outlineSections.value.splice(index, 1);
+  // 重新编号
+  outlineSections.value.forEach((s, i) => (s.section = i + 1));
+}
+
+function moveSectionUp(index: number) {
+  if (index === 0) return;
+  const temp = outlineSections.value[index];
+  outlineSections.value[index] = outlineSections.value[index - 1];
+  outlineSections.value[index - 1] = temp;
+  // 重新编号
+  outlineSections.value.forEach((s, i) => (s.section = i + 1));
+}
+
+function moveSectionDown(index: number) {
+  if (index === outlineSections.value.length - 1) return;
+  const temp = outlineSections.value[index];
+  outlineSections.value[index] = outlineSections.value[index + 1];
+  outlineSections.value[index + 1] = temp;
+  // 重新编号
+  outlineSections.value.forEach((s, i) => (s.section = i + 1));
+}
+
+function addPoint(sectionIndex: number) {
+  outlineSections.value[sectionIndex].points.push("");
+}
+
+function removePoint(sectionIndex: number, pointIndex: number) {
+  outlineSections.value[sectionIndex].points.splice(pointIndex, 1);
 }
 
 // ============ 主流程 ============
@@ -288,6 +469,12 @@ selectedTitleIndex.value = -1;
   article.value = null;
   fullContentHtml.value = "";
   agentSteps.forEach((s) => (s.status = "waiting"));
+  currentPhase.value = 1;
+  userDescription.value = "";
+  showTitleConfirm.value = false;
+  showOutlineEdit.value = false;
+  modifySuggestion.value = "";
+  isModifyingOutline.value = false;
 }
 
 function viewInList() {
@@ -420,8 +607,24 @@ function viewInList() {
             <h2 class="topic-text">{{ topic }}</h2>
           </div>
 
+          <!-- 阶段步骤条 -->
+          <div class="phase-stepper">
+            <div
+              v-for="(step, si) in phaseSteps"
+              :key="si"
+              :class="['phase-step', step.status]"
+            >
+              <div class="phase-dot">
+                <CheckCircleFilled v-if="step.status === 'done'" />
+                <span v-else>{{ si + 1 }}</span>
+              </div>
+              <div class="phase-label">{{ step.label }}</div>
+              <div v-if="si < phaseSteps.length - 1" :class="['phase-line', { active: step.status === 'done' }]" />
+            </div>
+          </div>
+
           <!-- 标题选项 -->
-          <div v-if="titleOptions.length > 0" class="stream-section">
+          <div v-if="titleOptions.length > 0 && !showOutlineEdit" class="stream-section">
             <h3 class="stream-section-title">备选标题</h3>
             <div class="title-cards">
               <div
@@ -440,35 +643,169 @@ function viewInList() {
                 </div>
               </div>
             </div>
+            <!-- 标题确认区域 -->
+            <div v-if="showTitleConfirm" class="title-confirm-area">
+              <div class="form-section" style="margin-top: 16px">
+                <label class="form-label">补充描述（可选）</label>
+                <a-textarea
+                  v-model:value="userDescription"
+                  placeholder="对文章内容的额外要求或说明..."
+                  :rows="2"
+                />
+              </div>
+              <a-button
+                type="primary"
+                size="large"
+                :disabled="selectedTitleIndex < 0"
+                @click="confirmTitle"
+              >
+                确认标题，继续生成大纲
+              </a-button>
+            </div>
           </div>
 
           <!-- 大纲 -->
           <div v-if="outlineText || outlineSections.length" class="stream-section">
-            <h3 class="stream-section-title">文章大纲</h3>
+            <h3 class="stream-section-title">
+              文章大纲
+              <span v-if="showOutlineEdit" class="section-count">· {{ outlineSections.length }} 章节</span>
+            </h3>
             <!-- 结构化渲染 -->
             <div v-if="outlineSections.length" class="outline-tree">
-              <div
-                v-for="(section, si) in outlineSections"
-                :key="si"
-                class="outline-section"
-              >
-                <div class="outline-section-header">
-                  <span class="outline-section-num">{{ section.section }}</span>
-                  <span class="outline-section-title">{{ section.title }}</span>
+              <!-- 编辑模式 -->
+              <template v-if="showOutlineEdit">
+                <div
+                  v-for="(section, si) in outlineSections"
+                  :key="si"
+                  class="outline-section editable"
+                >
+                  <div class="outline-section-header">
+                    <span class="outline-section-num">{{ si + 1 }}</span>
+                    <a-input
+                      v-model:value="section.title"
+                      class="section-title-input"
+                      size="small"
+                    />
+                    <span class="section-actions">
+                      <a-button
+                        size="small"
+                        type="text"
+                        :disabled="si === 0"
+                        @click="moveSectionUp(si)"
+                      >
+                        <ArrowUpOutlined />
+                      </a-button>
+                      <a-button
+                        size="small"
+                        type="text"
+                        :disabled="si === outlineSections.length - 1"
+                        @click="moveSectionDown(si)"
+                      >
+                        <ArrowDownOutlined />
+                      </a-button>
+                      <a-button
+                        size="small"
+                        type="text"
+                        danger
+                        :disabled="outlineSections.length <= 1"
+                        @click="removeSection(si)"
+                      >
+                        <DeleteOutlined />
+                      </a-button>
+                    </span>
+                  </div>
+                  <ul class="outline-points">
+                    <li
+                      v-for="(point, pi) in section.points"
+                      :key="pi"
+                      class="outline-point editable"
+                    >
+                      <span class="point-bullet" />
+                      <a-input
+                        v-model:value="section.points[pi]"
+                        class="point-input"
+                        size="small"
+                      />
+                      <a-button
+                        size="small"
+                        type="text"
+                        danger
+                        @click="removePoint(si, pi)"
+                      >
+                        <CloseOutlined />
+                      </a-button>
+                    </li>
+                    <li class="outline-point add-point">
+                      <a-button
+                        size="small"
+                        type="dashed"
+                        @click="addPoint(si)"
+                      >
+                        + 添加要点
+                      </a-button>
+                    </li>
+                  </ul>
                 </div>
-                <ul class="outline-points">
-                  <li
-                    v-for="(point, pi) in section.points"
-                    :key="pi"
-                    class="outline-point"
-                  >
-                    {{ point }}
-                  </li>
-                </ul>
-              </div>
+                <a-button
+                  type="dashed"
+                  size="small"
+                  @click="addSection"
+                  style="margin-top: 8px"
+                >
+                  + 添加章节
+                </a-button>
+              </template>
+              <!-- 只读模式 -->
+              <template v-else>
+                <div
+                  v-for="(section, si) in outlineSections"
+                  :key="si"
+                  class="outline-section"
+                >
+                  <div class="outline-section-header">
+                    <span class="outline-section-num">{{ section.section }}</span>
+                    <span class="outline-section-title">{{ section.title }}</span>
+                  </div>
+                  <ul class="outline-points">
+                    <li
+                      v-for="(point, pi) in section.points"
+                      :key="pi"
+                      class="outline-point"
+                    >
+                      {{ point }}
+                    </li>
+                  </ul>
+                </div>
+              </template>
             </div>
             <!-- 流式时显示原始输出 -->
             <pre v-else class="stream-block">{{ outlineText }}</pre>
+            <!-- 大纲编辑区域 -->
+            <div v-if="showOutlineEdit" class="outline-edit-area">
+              <div class="ai-modify-row">
+                <a-textarea
+                  v-model:value="modifySuggestion"
+                  placeholder="输入修改建议，如：增加案例分析章节..."
+                  :rows="2"
+                />
+                <a-button
+                  :loading="isModifyingOutline"
+                  :disabled="!modifySuggestion.trim()"
+                  @click="aiModifyOutline"
+                  style="margin-top: 8px"
+                >
+                  AI 修改大纲
+                </a-button>
+              </div>
+              <a-button
+                type="primary"
+                size="large"
+                @click="confirmOutline"
+                style="margin-top: 12px"
+              >
+                确认大纲，开始生成正文
+              </a-button>
+            </div>
           </div>
 
           <!-- 正文 -->
@@ -488,7 +825,7 @@ function viewInList() {
           </div>
 
           <!-- 空状态 -->
-          <div v-if="!titleOptions.length && !outlineText && !contentText" class="stream-waiting">
+          <div v-if="!titleOptions.length && !outlineText && !contentText && !showTitleConfirm && !showOutlineEdit" class="stream-waiting">
             <a-spin size="large" />
             <p>AI 智能体正在准备中...</p>
           </div>
@@ -1016,6 +1353,82 @@ function viewInList() {
   line-height: 1.5;
 }
 
+/* 阶段步骤条 */
+.phase-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  margin-bottom: 28px;
+}
+
+.phase-step {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  position: relative;
+}
+
+.phase-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+  background: var(--color-background-tertiary);
+  border: 2px solid var(--color-border);
+  color: var(--color-text-muted);
+  transition: all var(--transition-fast);
+}
+
+.phase-step.active .phase-dot {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+}
+
+.phase-step.done .phase-dot {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: #fff;
+}
+
+.phase-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  margin-left: 10px;
+  margin-right: 10px;
+  transition: color var(--transition-fast);
+}
+
+.phase-step.active .phase-label {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.phase-step.done .phase-label {
+  color: var(--color-text-secondary);
+}
+
+.phase-line {
+  width: 40px;
+  height: 2px;
+  background: var(--color-border);
+  margin: 0 8px;
+  transition: background var(--transition-fast);
+}
+
+.phase-line.active {
+  background: var(--color-success);
+}
+
 .stream-section {
   margin-bottom: 28px;
 }
@@ -1160,6 +1573,61 @@ function viewInList() {
   color: var(--color-text-secondary);
   line-height: 1.6;
   padding: 2px 0;
+}
+
+/* 大纲编辑模式 */
+.outline-section.editable {
+  padding: 12px 16px;
+  border-left: 2px solid var(--color-primary);
+  background: rgba(59, 130, 246, 0.03);
+  margin-bottom: 8px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.outline-section.editable .outline-section-header {
+  align-items: center;
+}
+
+.section-title-input {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.section-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.outline-point.editable {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.point-bullet {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.point-input {
+  flex: 1;
+  font-size: 13px;
+}
+
+.outline-point.add-point {
+  padding: 2px 0 2px 14px;
+}
+
+.section-count {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-muted);
 }
 
 .outline-point::before {
@@ -1574,5 +2042,26 @@ function viewInList() {
   .center-panel {
     padding: 20px 16px;
   }
+}
+
+/* 标题确认区域 */
+.title-confirm-area {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* 大纲编辑区域 */
+.outline-edit-area {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.ai-modify-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
 }
 </style>

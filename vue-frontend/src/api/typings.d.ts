@@ -3,6 +3,35 @@ declare namespace API {
     SESSION?: string | null;
   };
 
+  type aiModifyOutlineApiArticleAiModifyOutlinePostParams = {
+    SESSION?: string | null;
+  };
+
+  type ArticleAiModifyOutlineRequest = {
+    /** Taskid */
+    taskId: string;
+    /** Modifysuggestion */
+    modifySuggestion: string;
+  };
+
+  type ArticleConfirmOutlineRequest = {
+    /** Taskid */
+    taskId: string;
+    /** Outline */
+    outline: OutlineSection[];
+  };
+
+  type ArticleConfirmTitleRequest = {
+    /** Taskid */
+    taskId: string;
+    /** Selectedmaintitle */
+    selectedMainTitle: string;
+    /** Selectedsubtitle */
+    selectedSubTitle: string;
+    /** Userdescription */
+    userDescription?: string | null;
+  };
+
   type ArticleCreateRequest = {
     /** Topic 选题 */
     topic: string;
@@ -112,11 +141,29 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponseList_ = {
+    /** Code 状态码 */
+    code?: number;
+    /** Data 响应数据 */
+    data?: any[] | null;
+    /** Message 响应消息 */
+    message?: string;
+  };
+
   type BaseResponseLoginUserVO_ = {
     /** Code 状态码 */
     code?: number;
     /** 响应数据 */
     data?: LoginUserVO | null;
+    /** Message 响应消息 */
+    message?: string;
+  };
+
+  type BaseResponseNoneType_ = {
+    /** Code 状态码 */
+    code?: number;
+    /** Data 响应数据 */
+    data?: null;
     /** Message 响应消息 */
     message?: string;
   };
@@ -137,6 +184,14 @@ declare namespace API {
     data?: UserVO | null;
     /** Message 响应消息 */
     message?: string;
+  };
+
+  type confirmOutlineApiArticleConfirmOutlinePostParams = {
+    SESSION?: string | null;
+  };
+
+  type confirmTitleApiArticleConfirmTitlePostParams = {
+    SESSION?: string | null;
   };
 
   type createArticleApiArticleCreatePostParams = {
@@ -212,6 +267,15 @@ declare namespace API {
 
   type logoutApiUserLogoutPostParams = {
     SESSION?: string | null;
+  };
+
+  type OutlineSection = {
+    /** Section */
+    section: number;
+    /** Title */
+    title: string;
+    /** Points */
+    points: string[];
   };
 
   type TitleOption = {
