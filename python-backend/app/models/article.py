@@ -50,3 +50,25 @@ class Article(Base):
         nullable=True,
         comment="文章风格：tech/emotional/educational/humorous",
     )
+    user_description = Column(
+        "userDescription", Text, nullable=True, comment="用户补充描述"
+    )
+
+    enabled_image_methods = Column(
+        "enabledImageMethods",
+        Text,
+        nullable=True,
+        comment="允许的配图方式列表（JSON格式）",
+    )
+    title_options = Column(
+        "titleOptions", Text, nullable=True, comment="标题方案列表（JSON格式）"
+    )
+
+    phase = Column(
+        String(40),
+        nullable=False,
+        default="PENDING",
+        comment="阶段：PENDING/TITLE_GENERATING/TITLE_SELECTING/OUTLINE_GENERATING/OUTLINE_EDITING/CONTENT_GENERATING",
+    )
+
+
