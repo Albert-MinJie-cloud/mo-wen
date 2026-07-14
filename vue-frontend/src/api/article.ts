@@ -16,6 +16,60 @@ export async function getArticleApiArticleTaskIdGet(
   });
 }
 
+/** Ai Modify Outline AI 修改大纲 POST /api/article/ai-modify-outline */
+export async function aiModifyOutlineApiArticleAiModifyOutlinePost(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.aiModifyOutlineApiArticleAiModifyOutlinePostParams,
+  body: API.ArticleAiModifyOutlineRequest,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseList_>("/api/article/ai-modify-outline", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    params: { ...params },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** Confirm Outline 确认大纲 POST /api/article/confirm-outline */
+export async function confirmOutlineApiArticleConfirmOutlinePost(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.confirmOutlineApiArticleConfirmOutlinePostParams,
+  body: API.ArticleConfirmOutlineRequest,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseNoneType_>("/api/article/confirm-outline", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    params: { ...params },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** Confirm Title 确认标题并输入补充描述 POST /api/article/confirm-title */
+export async function confirmTitleApiArticleConfirmTitlePost(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.confirmTitleApiArticleConfirmTitlePostParams,
+  body: API.ArticleConfirmTitleRequest,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseNoneType_>("/api/article/confirm-title", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    params: { ...params },
+    data: body,
+    ...(options || {}),
+  });
+}
+
 /** Create Article 创建文章任务 POST /api/article/create */
 export async function createArticleApiArticleCreatePost(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
