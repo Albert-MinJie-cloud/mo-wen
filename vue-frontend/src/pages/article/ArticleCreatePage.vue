@@ -60,11 +60,13 @@ const agentSteps = reactive<AgentStep[]>([
   { key: "AGENT1", icon: FileTextOutlined, title: "标题生成", desc: "分析选题，生成吸睛标题", status: "waiting" },
   { key: "AGENT2", icon: OrderedListOutlined, title: "大纲规划", desc: "构建逻辑清晰的文章骨架", status: "waiting" },
   { key: "AGENT3", icon: EditOutlined, title: "正文撰写", desc: "逐步生成高质量正文内容", status: "waiting" },
-  { key: "AGENT4", icon: PictureOutlined, title: "封面设计", desc: "匹配文章主题生成封面", status: "waiting" },
-  { key: "AGENT5", icon: ThunderboltOutlined, title: "智能配图", desc: "搜索与内容匹配的配图", status: "waiting" },
+  { key: "AGENT4", icon: PictureOutlined, title: "配图分析", desc: "分析内容，确定配图位置与来源", status: "waiting" },
+  { key: "AGENT5", icon: ThunderboltOutlined, title: "生成配图", desc: "搜索与内容匹配的配图", status: "waiting" },
+  { key: "MERGE", icon: MergeCellsOutlined, title: "图文合成", desc: "将配图嵌入文章正文", status: "waiting" },
 ]);
 
 const outlineText = ref("");
+const outlineSections = ref<any[]>([]);
 const contentText = ref("");
 const titleOptions = ref<API.TitleOption[]>([]);
 const selectedTitleIndex = ref(-1);
@@ -141,17 +143,6 @@ function stopTimer() {
 // ============ SSE 消息处理 ============
 function handleSSEMessage(data: SSEMessage) {
   switch (data.type) {
-    case "AGENT_START":
-      if (data.agent) {
-        const agentKeyMap: Record<string, string> = {
-          Agent1: "AGENT1", Agent2: "AGENT2", Agent3: "AGENT3",
-          Agent4: "AGENT4", Agent5: "AGENT5", Merge: "MERGE",
-        };
-        const key = agentKeyMap[data.agent] || "";
-        if (key) updateAgentStep(key, "processing");
-      }
-      break;
-
     case "AGENT1_COMPLETE":
       updateAgentStep("AGENT1", "done");
       if (data.titleOptions) titleOptions.value = data.titleOptions;
@@ -163,6 +154,7 @@ function handleSSEMessage(data: SSEMessage) {
       break;
     case "AGENT2_COMPLETE":
       updateAgentStep("AGENT2", "done");
+      if (data.outline) outlineSections.value = data.outline;
       break;
 
     case "AGENT3_STREAMING":
@@ -183,6 +175,11 @@ function handleSSEMessage(data: SSEMessage) {
       break;
     case "AGENT5_COMPLETE":
       updateAgentStep("AGENT5", "done");
+      updateAgentStep("MERGE", "processing");
+      break;
+
+    case "MERGE_COMPLETE":
+      updateAgentStep("MERGE", "done");
       break;
 
     case "ALL_COMPLETE":
@@ -209,6 +206,7 @@ async function startCreate() {
   isCompleted.value = false;
   errorMessage.value = "";
   outlineText.value = "";
+  outlineSections.value = [];
   contentText.value = "";
   titleOptions.value = [];
 selectedTitleIndex.value = -1;
@@ -282,6 +280,7 @@ function resetState() {
   taskId.value = "";
   errorMessage.value = "";
   outlineText.value = "";
+  outlineSections.value = [];
   contentText.value = "";
   titleOptions.value = [];
 selectedTitleIndex.value = -1;
@@ -444,9 +443,32 @@ function viewInList() {
           </div>
 
           <!-- 大纲 -->
-          <div v-if="outlineText" class="stream-section">
+          <div v-if="outlineText || outlineSections.length" class="stream-section">
             <h3 class="stream-section-title">文章大纲</h3>
-            <pre class="stream-block">{{ outlineText }}</pre>
+            <!-- 结构化渲染 -->
+            <div v-if="outlineSections.length" class="outline-tree">
+              <div
+                v-for="(section, si) in outlineSections"
+                :key="si"
+                class="outline-section"
+              >
+                <div class="outline-section-header">
+                  <span class="outline-section-num">{{ section.section }}</span>
+                  <span class="outline-section-title">{{ section.title }}</span>
+                </div>
+                <ul class="outline-points">
+                  <li
+                    v-for="(point, pi) in section.points"
+                    :key="pi"
+                    class="outline-point"
+                  >
+                    {{ point }}
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <!-- 流式时显示原始输出 -->
+            <pre v-else class="stream-block">{{ outlineText }}</pre>
           </div>
 
           <!-- 正文 -->
@@ -1076,6 +1098,74 @@ function viewInList() {
   font-size: 13px;
   color: var(--color-text-secondary);
   margin: 0;
+}
+
+/* 大纲结构化展示 */
+.outline-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.outline-section {
+  padding: 12px 16px;
+  border-left: 2px solid var(--color-border);
+  transition: border-color var(--transition-fast);
+}
+
+.outline-section:hover {
+  border-left-color: var(--color-primary-light);
+}
+
+.outline-section-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.outline-section-num {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--color-primary);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+  font-family: "Outfit", sans-serif;
+}
+
+.outline-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.4;
+  padding-top: 1px;
+}
+
+.outline-points {
+  margin: 8px 0 0 36px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.outline-point {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  padding: 2px 0;
+}
+
+.outline-point::before {
+  content: "•";
+  color: var(--color-text-muted);
+  margin-right: 8px;
 }
 
 /* 流式文本块 */

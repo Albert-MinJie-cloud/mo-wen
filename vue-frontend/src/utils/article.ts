@@ -1,10 +1,11 @@
 /** 文章状态映射 */
-export const ARTICLE_STATUS_MAP: Record<string, { text: string; cls: string }> = {
-  PENDING: { text: "等待中", cls: "pending" },
-  PROCESSING: { text: "生成中", cls: "processing" },
-  COMPLETED: { text: "已完成", cls: "completed" },
-  FAILED: { text: "失败", cls: "failed" },
-};
+export const ARTICLE_STATUS_MAP: Record<string, { text: string; cls: string }> =
+  {
+    PENDING: { text: "等待中", cls: "pending" },
+    PROCESSING: { text: "生成中", cls: "processing" },
+    COMPLETED: { text: "已完成", cls: "completed" },
+    FAILED: { text: "失败", cls: "failed" },
+  };
 
 /** 文章风格选项（含描述，用于表单） */
 export const ARTICLE_STYLE_OPTIONS = [
@@ -16,13 +17,12 @@ export const ARTICLE_STYLE_OPTIONS = [
 
 /** 文章风格标签映射（用于展示） */
 export const ARTICLE_STYLE_LABELS: Record<string, string> = Object.fromEntries(
-  ARTICLE_STYLE_OPTIONS.map((s) => [s.value, s.label])
+  ARTICLE_STYLE_OPTIONS.map((s) => [s.value, s.label]),
 );
 
 /** 配图方式选项 */
 export const IMAGE_METHOD_OPTIONS = [
   { value: "PEXELS", label: "Pexels", desc: "高质量摄影图库" },
-  { value: "PICSUM", label: "随机图", desc: "Lorem Picsum 随机图片" },
   { value: "MERMAID", label: "Mermaid", desc: "代码驱动图表" },
   { value: "ICONIFY", label: "Iconify", desc: "开源图标集" },
   { value: "EMOJI_PACK", label: "表情包", desc: "趣味表情配图" },
