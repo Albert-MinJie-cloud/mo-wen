@@ -1,4 +1,4 @@
-"""图片相关数据模型（第 5 期新增）"""
+"""图片相关数据模型"""
 
 import base64
 from typing import Optional
@@ -17,10 +17,7 @@ class ImageRequest(BaseModel):
     style: Optional[str] = Field(None, description="图片风格描述")
 
     def get_effective_param(self, is_ai_generated: bool) -> str:
-        """
-        获取有效的搜索/生成参数
-        AI 生图优先使用 prompt，图库检索使用 keywords
-        """
+        """AI 生图优先使用 prompt，图库检索使用 keywords"""
         if is_ai_generated:
             return self.prompt if self.prompt else self.keywords or ""
         return self.keywords if self.keywords else self.prompt or ""
