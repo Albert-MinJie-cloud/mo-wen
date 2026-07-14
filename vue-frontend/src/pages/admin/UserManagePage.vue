@@ -73,7 +73,7 @@
             </template>
             <template v-else-if="column.dataIndex === 'createTime'">
               <span class="time-text">{{
-                dayjs(record.createTime).format("YYYY-MM-DD HH:mm:ss")
+                formatTime(record.createTime, "YYYY-MM-DD HH:mm:ss")
               }}</span>
             </template>
             <template v-else-if="column.key === 'action'">
@@ -98,7 +98,7 @@ import { deleteUserApiUserDeletePost, listUsersByPageApiUserListPagePost } from 
 import { message } from "@/message";
 import { SearchOutlined } from "@ant-design/icons-vue";
 import Button from "@/components/Button.vue";
-import dayjs from "dayjs";
+import { formatTime } from "@/utils/format";
 
 const columns = [
   {
