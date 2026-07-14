@@ -1,5 +1,3 @@
-"""图片服务接口（第 5 期新增）"""
-
 from abc import ABC, abstractmethod
 from typing import Optional
 

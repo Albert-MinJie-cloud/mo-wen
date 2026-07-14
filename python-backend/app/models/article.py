@@ -45,3 +45,8 @@ class Article(Base):
     is_delete = Column(
         "isDelete", SmallInteger, nullable=False, default=0, comment="是否删除"
     )
+    style = Column(
+        String(20),
+        nullable=True,
+        comment="文章风格：tech/emotional/educational/humorous",
+    )

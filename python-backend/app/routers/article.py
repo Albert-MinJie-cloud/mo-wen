@@ -34,12 +34,14 @@ async def create_article(
 
     service = ArticleService(db)
     task_id = await service.create_article_task_with_quota_check(
-        request.topic, current_user
+        request.topic, current_user, request.style, request.enabled_image_methods
     )
 
     # 用 asyncio.create_task 异步执行文章生成，不等待完成
     asyncio.create_task(
-        article_async_service.execute_article_generation(task_id, request.topic)
+        article_async_service.execute_article_generation(
+            task_id, request.topic, request.style, request.enabled_image_methods
+        )
     )
 
     return BaseResponse.success(data=task_id, message="任务创建成功")

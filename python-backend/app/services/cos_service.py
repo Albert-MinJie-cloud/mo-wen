@@ -72,7 +72,7 @@ class CosService:
         self, image_data: ImageData, folder: str
     ) -> Optional[str]:
         """
-        上传图片数据到 COS（第 5 期新增）
+        上传图片数据到 COS
         支持多种数据格式：字节数据、URL、data URL
 
         Args:

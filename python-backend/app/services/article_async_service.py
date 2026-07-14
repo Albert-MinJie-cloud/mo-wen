@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional, List
 
 from app.services.article_agent_service import ArticleAgentService
 from app.services.article_service import ArticleService
@@ -18,7 +18,13 @@ logger = logging.getLogger(__name__)
 class ArticleAsyncService:
     """文章异步任务服务"""
 
-    async def execute_article_generation(self, task_id: str, topic: str):
+    async def execute_article_generation(
+        self,
+        task_id: str,
+        topic: str,
+        style: Optional[str] = None,
+        enabled_image_methods: Optional[List[str]] = None,
+    ):
         """异步执行文章生成"""
         article_agent_service = ArticleAgentService()
         article_service = ArticleService(database)
@@ -33,6 +39,8 @@ class ArticleAsyncService:
             state = ArticleState()
             state.task_id = task_id
             state.topic = topic
+            state.style = style
+            state.enabled_image_methods = enabled_image_methods
 
             # 执行智能体编排，通过 SSE 推送进度
             await article_agent_service.execute_article_generation(

@@ -29,14 +29,16 @@ class ArticleService:
         }
 
     async def create_article_task_with_quota_check(
-        self, topic: str, login_user: LoginUserVO
+        self,
+        topic: str,
+        login_user: LoginUserVO,
+        style: Optional[str] = None,
+        enabled_image_methods: Optional[List[str]] = None,
     ) -> str:
-        """创建文章任务（暂不检查配额，第 7 期实现）"""
         task_id = str(uuid.uuid4())
-
         query = """
-            INSERT INTO article (taskId, userId, topic, status, createTime)
-            VALUES (:taskId, :userId, :topic, :status, :createTime)
+            INSERT INTO article (taskId, userId, topic, style, status, createTime)
+            VALUES (:taskId, :userId, :topic, :style, :status, :createTime)
         """
         await self.db.execute(
             query=query,
@@ -44,11 +46,11 @@ class ArticleService:
                 "taskId": task_id,
                 "userId": login_user.id,
                 "topic": topic,
+                "style": style,
                 "status": ArticleStatusEnum.PENDING.value,
                 "createTime": datetime.now(),
             },
         )
-
         return task_id
 
     async def update_article_status(

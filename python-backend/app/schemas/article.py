@@ -10,11 +10,13 @@ class ArticleCreateRequest(BaseModel):
     """创建文章请求"""
 
     topic: str = Field(..., min_length=1, description="选题")
-    style: Optional[str] = Field(None, description="文章风格：tech/emotional/educational/humorous")
+    style: Optional[str] = Field(
+        None, description="文章风格：tech/emotional/educational/humorous"
+    )
     enabled_image_methods: Optional[List[str]] = Field(
         None,
         alias="enabledImageMethods",
-        description="允许的配图方式列表（为空表示支持所有方式）"
+        description="允许的配图方式列表（为空表示支持所有方式）",
     )
 
 
@@ -92,7 +94,7 @@ class OutlineResult(BaseModel):
 
 
 class ImageRequirement(BaseModel):
-    """配图需求（第 5 期：新增 imageSource、prompt、placeholderId）"""
+    """配图需求"""
 
     position: int
     type: str
@@ -122,7 +124,7 @@ class ImageResult(BaseModel):
 
 
 class Agent4Result(BaseModel):
-    """智能体4返回结果（第 5 期：占位符方案）"""
+    """智能体4返回结果（占位符方案）"""
 
     content_with_placeholders: str = Field(..., alias="contentWithPlaceholders")
     image_requirements: List[ImageRequirement] = Field(..., alias="imageRequirements")
@@ -132,16 +134,16 @@ class Agent4Result(BaseModel):
 
 
 class ArticleState:
-    """文章生成状态"""
+    """文章生成状态（智能体间共享的状态对象）"""
 
     def __init__(self):
         self.task_id: Optional[str] = None
         self.topic: Optional[str] = None
         self.user_description: Optional[str] = None
-        self.style: Optional[str] = None  # 第 5 期新增
+        self.style: Optional[str] = None
         self.phase: Optional[str] = None
         self.title_options: Optional[List[TitleOption]] = None
-        self.enabled_image_methods: Optional[List[str]] = None  # 第 5 期新增
+        self.enabled_image_methods: Optional[List[str]] = None
         self.title: Optional[TitleResult] = None
         self.outline: Optional[OutlineResult] = None
         self.content: Optional[str] = None
