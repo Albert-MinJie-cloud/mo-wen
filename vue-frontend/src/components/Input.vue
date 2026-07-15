@@ -40,16 +40,13 @@ withDefaults(
   border-radius: var(--radius-md);
   border-color: var(--color-border);
   background: rgba(255, 255, 255, 0.04) !important;
+  color: var(--color-text) !important;
+  font-size: 14px;
   transition: all var(--transition-fast);
 
-  :deep(.ant-input) {
-    background: transparent !important;
-    color: var(--color-text);
-    font-size: 14px;
-
-    &::placeholder {
-      color: var(--color-text-muted);
-    }
+  &::placeholder {
+    color: var(--color-text-secondary);
+    opacity: 0.6;
   }
 
   :deep(.ant-input-affix-wrapper) {
