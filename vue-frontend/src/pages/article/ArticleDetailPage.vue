@@ -93,16 +93,6 @@ onMounted(() => {
             v-html="fullContentHtml"
           />
 
-          <!-- 配图 -->
-          <div v-if="article.images?.length" class="article-images">
-            <h3>配图</h3>
-            <div class="image-gallery">
-              <div v-for="(img, i) in article.images" :key="i" class="gallery-item">
-                <img :src="img.url" :alt="img.description || '配图'" />
-                <p v-if="img.description" class="gallery-desc">{{ img.description }}</p>
-              </div>
-            </div>
-          </div>
         </article>
       </a-spin>
     </div>
@@ -193,43 +183,6 @@ onMounted(() => {
   padding: 36px 48px;
 }
 
-.article-images {
-  padding: 0 48px 40px;
-}
-
-.article-images h3 {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text);
-  margin: 0 0 14px;
-}
-
-.image-gallery {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
-}
-
-.gallery-item {
-  background: var(--color-background-secondary);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.gallery-item img {
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
-  display: block;
-}
-
-.gallery-desc {
-  padding: 10px 14px;
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  margin: 0;
-}
-
 /* Markdown */
 .markdown-body {
   color: var(--color-text);
@@ -291,9 +244,10 @@ onMounted(() => {
 .markdown-body :deep(li) { margin-bottom: 6px; }
 
 .markdown-body :deep(img) {
-  max-width: 100%;
+  max-width: 50%;
   border-radius: var(--radius-md);
-  margin: 16px 0;
+  margin: 16px auto;
+  display: block;
 }
 
 .markdown-body :deep(table) { width: 100%; border-collapse: collapse; margin: 16px 0; }
@@ -308,12 +262,6 @@ onMounted(() => {
   }
   .article-body {
     padding: 24px;
-  }
-  .article-images {
-    padding: 0 24px 24px;
-  }
-  .image-gallery {
-    grid-template-columns: 1fr;
   }
   .article-title {
     font-size: 22px;
