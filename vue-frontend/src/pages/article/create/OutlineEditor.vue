@@ -136,25 +136,25 @@ const modifySuggestionModel = computed({
           :rows="2"
         />
         <Button
-          variant="gradient"
+          variant="primary"
           size="sm"
-          :disabled="!modifySuggestion.trim() || isModifyingOutline"
+          :disabled="!modifySuggestion.trim() || isModifyingOutline || isConfirmingOutline"
           @click="emit('aiModifyOutline')"
           style="margin-top: 8px"
         >
           AI 修改大纲
         </Button>
       </div>
-      <Button
-        variant="gradient"
-        size="lg"
-        :disabled="isModifyingOutline || isConfirmingOutline"
-        block
-        @click="emit('confirmOutline')"
-        style="margin-top: 12px"
-      >
+      <div style="text-align: center; margin-top: 12px">
+        <Button
+          variant="primary"
+          size="lg"
+          :disabled="isModifyingOutline || isConfirmingOutline"
+          @click="emit('confirmOutline')"
+        >
         确认大纲，开始生成正文
-      </Button>
+        </Button>
+      </div>
     </div>
   </div>
 </template>

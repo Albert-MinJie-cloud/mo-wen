@@ -119,12 +119,11 @@ const canConfirm = computed(() => {
       :user-description="userDescription"
       @update:user-description="emit('update:userDescription', $event)"
     />
-    <div v-if="showTitleConfirm" style="margin-top: 16px">
+    <div v-if="showTitleConfirm" style="margin-top: 16px; text-align: center">
       <Button
-        variant="gradient"
+        variant="primary"
         size="lg"
         :disabled="!canConfirm || isConfirmingTitle"
-        block
         @click="emit('confirmTitle')"
       >
         确认标题，继续生成大纲

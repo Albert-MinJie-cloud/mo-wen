@@ -92,7 +92,7 @@ function onToggleStyle(optValue: string) {
     </div>
 
     <div class="form-actions">
-      <Button variant="gradient" size="lg" :disabled="!canSubmit" block @click="emit('startCreate')">
+      <Button variant="primary" size="lg" :disabled="!canSubmit" @click="emit('startCreate')">
         <RocketOutlined /> 开始创作
       </Button>
     </div>
@@ -193,5 +193,6 @@ function onToggleStyle(optValue: string) {
 
 .form-actions {
   padding-top: 8px;
+  text-align: center;
 }
 </style>

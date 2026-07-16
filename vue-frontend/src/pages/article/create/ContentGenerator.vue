@@ -3,10 +3,12 @@ withDefaults(
   defineProps<{
     contentText?: string;
     generatedImages?: any[];
+    isGeneratingImages?: boolean;
   }>(),
   {
     contentText: "",
     generatedImages: () => [],
+    isGeneratingImages: false,
   },
 );
 </script>
@@ -18,9 +20,21 @@ withDefaults(
     <pre class="stream-block content-block">{{ contentText }}</pre>
   </div>
 
+  <!-- 配图生成中 -->
+  <div v-if="contentText && isGeneratingImages && generatedImages.length === 0" class="stream-section">
+    <h3 class="stream-section-title">配图生成</h3>
+    <div class="image-loading">
+      <a-spin size="default" />
+      <p>正在分析配图需求，搜索匹配图片...</p>
+    </div>
+  </div>
+
   <!-- 配图 -->
   <div v-if="generatedImages.length > 0" class="stream-section">
-    <h3 class="stream-section-title">已生成配图 · {{ generatedImages.length }}</h3>
+    <h3 class="stream-section-title">
+      已生成配图 · {{ generatedImages.length }}
+      <a-spin v-if="isGeneratingImages" size="small" style="margin-left: 8px" />
+    </h3>
     <div class="stream-images">
       <div v-for="(img, i) in generatedImages" :key="i" class="stream-img-item">
         <img :src="img.url" :alt="img.description || '配图'" />
@@ -41,6 +55,8 @@ withDefaults(
   margin: 0 0 12px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
 }
 
 .stream-block {
@@ -61,6 +77,16 @@ withDefaults(
 
 .content-block {
   max-height: 500px;
+}
+
+.image-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
 }
 
 .stream-images {
