@@ -86,6 +86,17 @@ const currentAgent = computed(() => agentSteps.find((s) => s.status === "process
 
 const currentAgentTitle = computed(() => currentAgent.value?.title);
 
+const isGeneratingImages = computed(() => {
+  const key = currentAgent.value?.key;
+  return key === "AGENT4" || key === "AGENT5" || key === "MERGE";
+});
+
+const loadingMessage = computed(() => {
+  if (currentPhase.value === 1) return "正在分析选题，生成标题方案...";
+  if (currentPhase.value === 2) return "正在分析文章结构，生成大纲...";
+  return "正在撰写正文内容，匹配配图...";
+});
+
 // 实时字数
 const realtimeWordCount = computed(() =>
   getWordCount(outlineText.value + contentText.value)
@@ -512,6 +523,8 @@ function viewInList() {
         :is-modifying-outline="isModifyingOutline"
         :is-confirming-title="isConfirmingTitle"
         :is-confirming-outline="isConfirmingOutline"
+        :loading-message="loadingMessage"
+        :is-generating-images="isGeneratingImages"
         @ai-modify-outline="aiModifyOutline"
         @add-section="addSection"
         @remove-section="removeSection"

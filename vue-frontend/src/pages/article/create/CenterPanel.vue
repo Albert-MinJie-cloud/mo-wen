@@ -29,8 +29,10 @@ const props = withDefaults(
     isModifyingOutline?: boolean;
     isConfirmingTitle?: boolean;
     isConfirmingOutline?: boolean;
+    loadingMessage?: string;
     contentText?: string;
     generatedImages?: any[];
+    isGeneratingImages?: boolean;
     // 完成状态
     article?: API.ArticleVO | null;
     fullContentHtml?: string;
@@ -55,8 +57,10 @@ const props = withDefaults(
     isModifyingOutline: false,
     isConfirmingTitle: false,
     isConfirmingOutline: false,
+    loadingMessage: "",
     contentText: "",
     generatedImages: () => [],
+    isGeneratingImages: false,
     article: null,
     fullContentHtml: "",
   },
@@ -158,6 +162,7 @@ const emit = defineEmits<{
       <ContentGenerator
         :content-text="contentText"
         :generated-images="generatedImages"
+        :is-generating-images="isGeneratingImages"
       />
 
       <!-- 空状态 -->
@@ -166,7 +171,7 @@ const emit = defineEmits<{
         class="stream-waiting"
       >
         <a-spin size="large" />
-        <p>AI 智能体正在准备中...</p>
+        <p>{{ loadingMessage || 'AI 智能体正在准备中...' }}</p>
       </div>
     </div>
 
