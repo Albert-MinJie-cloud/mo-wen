@@ -211,10 +211,38 @@ class ArticleAgentService:
 
         return "".join(content_builder)
 
+    def _clean_json_content(self, content: str) -> str:
+        """清理 LLM 返回的 JSON 内容，移除 markdown 代码块等"""
+        content = content.strip()
+        # 移除 markdown 代码块标记
+        if content.startswith("```"):
+            first_newline = content.find("\n")
+            if first_newline != -1:
+                content = content[first_newline + 1 :]
+            if content.endswith("```"):
+                content = content[:-3]
+        # 尝试提取 JSON 对象（找第一个 { 和最后一个 }）
+        obj_start = content.find("{")
+        obj_end = content.rfind("}")
+        # 尝试提取 JSON 数组（找第一个 [ 和最后一个 ]）
+        arr_start = content.find("[")
+        arr_end = content.rfind("]")
+        # 优先提取更靠前的内容（对象或数组）
+        if obj_start != -1 and obj_end != -1 and obj_end > obj_start:
+            if arr_start != -1 and arr_start < obj_start:
+                # 数组在外层，提取数组
+                content = content[arr_start : arr_end + 1]
+            else:
+                content = content[obj_start : obj_end + 1]
+        elif arr_start != -1 and arr_end != -1 and arr_end > arr_start:
+            content = content[arr_start : arr_end + 1]
+        return content.strip()
+
     def _parse_json_response(self, content: str, name: str) -> dict:
-        """解析 JSON 响应"""
+        """解析 JSON 响应，自动清理 markdown 代码块"""
+        cleaned = self._clean_json_content(content)
         try:
-            result = json.loads(content)
+            result = json.loads(cleaned)
             if not isinstance(result, dict):
                 raise ValueError("响应不是 JSON 对象")
             return result
@@ -226,9 +254,10 @@ class ArticleAgentService:
             raise RuntimeError(f"{name}解析失败")
 
     def _parse_json_list_response(self, content: str, name: str) -> list:
-        """解析 JSON 数组响应"""
+        """解析 JSON 数组响应，自动清理 markdown 代码块"""
+        cleaned = self._clean_json_content(content)
         try:
-            result = json.loads(content)
+            result = json.loads(cleaned)
             if not isinstance(result, list):
                 raise ValueError("响应不是 JSON 数组")
             return result
