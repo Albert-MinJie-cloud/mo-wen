@@ -83,17 +83,16 @@ class ArticleService:
         # 没有有效的配图方式，使用默认非 VIP 方式
         return list(self._default_non_vip_image_methods)
 
-    async def create_article_task_with_quota_check(
+    async def create_article_task(
         self,
         topic: str,
         login_user: LoginUserVO,
         style: Optional[str] = None,
         enabled_image_methods: Optional[List[str]] = None,
     ) -> str:
-        self._validate_image_methods(enabled_image_methods, login_user)
-        enabled_image_methods = self._process_image_methods(
-            enabled_image_methods, login_user
-        )
+        """创建文章任务"""
+        final_image_methods = self._process_image_methods(enabled_image_methods, login_user)
+        self._validate_image_methods(final_image_methods, login_user)
 
         task_id = str(uuid.uuid4())
         query = """
@@ -109,8 +108,8 @@ class ArticleService:
                 "style": style,
                 "status": ArticleStatusEnum.PENDING.value,
                 "createTime": datetime.now(),
-                "enabledImageMethods": json.dumps(enabled_image_methods)
-                if enabled_image_methods
+                "enabledImageMethods": json.dumps(final_image_methods)
+                if final_image_methods
                 else None,
             },
         )
