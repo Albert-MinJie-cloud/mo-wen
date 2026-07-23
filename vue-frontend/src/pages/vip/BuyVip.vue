@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from "vue";
 import {
   createVipPaymentSessionApiPaymentCreateVipSessionPost,
   getPaymentRecordsApiPaymentRecordsGet,
+  refundApiPaymentRefundPost,
 } from "@/api/payment";
 import Button from "@/components/Button.vue";
 import { useLoginUserStore } from "@/stores/loginUser";
@@ -239,6 +240,31 @@ function formatUSD(amount: number): string {
   return `$${amount.toFixed(2)}`;
 }
 
+// 退款中状态
+const refundingId = ref<number | null>(null);
+
+// 申请退款
+async function handleRefund(record: API.PaymentRecordVO) {
+  if (refundingId.value) return;
+  refundingId.value = record.id;
+  try {
+    const res = await refundApiPaymentRefundPost({
+      reason: "用户主动申请退款",
+    });
+    if (res.data.code === 0 && res.data.data) {
+      message.success("退款成功，会员已取消");
+      await loginUserStore.fetchLoginUser();
+      await fetchRecords();
+    } else {
+      message.error(res.data.message || "退款失败");
+    }
+  } catch {
+    message.error("网络异常，请稍后重试");
+  } finally {
+    refundingId.value = null;
+  }
+}
+
 // 获取支付记录
 async function fetchRecords() {
   recordsLoading.value = true;
@@ -412,9 +438,29 @@ onMounted(() => {
               <span class="record-expire">{{ getExpireDate(record) }}</span>
             </template>
           </a-table-column>
-          <a-table-column title="时间" dataIndex="createTime" key="createTime">
+          <a-table-column title="时间" dataIndex="createTime" key="createTime" :width="180">
             <template #default="{ record }">
               {{ new Date(record.createTime).toLocaleString("zh-CN") }}
+            </template>
+          </a-table-column>
+          <a-table-column title="操作" key="action" :width="100">
+            <template #default="{ record }">
+              <a-popconfirm
+                v-if="record.status === 'SUCCEEDED'"
+                title="确定要退款吗？会员将被取消"
+                ok-text="确定退款"
+                cancel-text="取消"
+                @confirm="handleRefund(record)"
+              >
+                <a-button
+                  danger
+                  type="link"
+                  size="small"
+                  :loading="refundingId === record.id"
+                >
+                  退款
+                </a-button>
+              </a-popconfirm>
             </template>
           </a-table-column>
         </a-table>
