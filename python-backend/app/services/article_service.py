@@ -95,10 +95,15 @@ class ArticleService:
         self._validate_image_methods(final_image_methods, login_user)
 
         task_id = str(uuid.uuid4())
+        now = datetime.now()
         query = """
-        INSERT INTO article (taskId, userId, topic, style, status, createTime, enabledImageMethods)
-        VALUES (:taskId, :userId, :topic, :style, :status, :createTime, :enabledImageMethods)
-    """
+            INSERT INTO article (
+                taskId, userId, topic, style, enabledImageMethods, status, phase, createTime
+            )
+            VALUES (
+                :taskId, :userId, :topic, :style, :enabledImageMethods, :status, :phase, :createTime
+            )
+        """
         await self.db.execute(
             query=query,
             values={
@@ -106,14 +111,61 @@ class ArticleService:
                 "userId": login_user.id,
                 "topic": topic,
                 "style": style,
-                "status": ArticleStatusEnum.PENDING.value,
-                "createTime": datetime.now(),
-                "enabledImageMethods": json.dumps(final_image_methods)
+                "enabledImageMethods": json.dumps(final_image_methods, ensure_ascii=False)
                 if final_image_methods
                 else None,
+                "status": ArticleStatusEnum.PENDING.value,
+                "phase": ArticlePhaseEnum.PENDING.value,
+                "createTime": now,
             },
         )
+        logger.info("文章任务创建成功, taskId=%s, userId=%s", task_id, login_user.id)
         return task_id
+
+    async def create_article_task_with_quota_check(
+        self,
+        topic: str,
+        login_user: LoginUserVO,
+        style: Optional[str] = None,
+        enabled_image_methods: Optional[List[str]] = None,
+    ) -> str:
+        """在同一事务中完成配额扣减和任务创建"""
+        if self._is_vip_or_admin(login_user):
+            return await self.create_article_task(
+                topic=topic,
+                login_user=login_user,
+                style=style,
+                enabled_image_methods=enabled_image_methods,
+            )
+
+        async with self.db.transaction():
+            quota_row = await self.db.fetch_one(
+                query="""
+                    SELECT quota
+                    FROM user
+                    WHERE id = :userId AND isDelete = 0
+                    FOR UPDATE
+                """,
+                values={"userId": login_user.id},
+            )
+            throw_if_not(quota_row, ErrorCode.NOT_FOUND_ERROR, "用户不存在")
+            throw_if(quota_row["quota"] <= 0, ErrorCode.OPERATION_ERROR, "配额不足")
+
+            await self.db.execute(
+                query="""
+                    UPDATE user
+                    SET quota = quota - 1
+                    WHERE id = :userId
+                """,
+                values={"userId": login_user.id},
+            )
+
+            return await self.create_article_task(
+                topic=topic,
+                login_user=login_user,
+                style=style,
+                enabled_image_methods=enabled_image_methods,
+            )
 
     async def update_article_status(
         self,
