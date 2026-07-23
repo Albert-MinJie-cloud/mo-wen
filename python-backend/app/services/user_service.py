@@ -144,6 +144,53 @@ class UserService:
             updateTime=user_dict["updateTime"].isoformat(),
         )
 
+    async def get_login_user_by_id(self, user_id: int) -> Optional[LoginUserVO]:
+        """根据 ID 获取登录用户信息（含 VIP 过期检查）"""
+        query = select(User).where(and_(User.id == user_id, User.is_delete == 0))
+        user = await self.db.fetch_one(query)
+        if not user:
+            return None
+
+        user_dict = dict(user)
+
+        # 检查 VIP 是否过期
+        vip_expire_time = user_dict.get("vipExpireTime")
+        if user_dict.get("userRole") == "vip" and vip_expire_time is not None:
+            if vip_expire_time < datetime.now():
+                await self.db.execute(
+                    query="""
+                        UPDATE user SET userRole = :userRole, quota = :quota,
+                        vipTime = NULL, vipExpireTime = NULL WHERE id = :id
+                    """,
+                    values={
+                        "userRole": UserConstant.DEFAULT_ROLE,
+                        "quota": UserConstant.DEFAULT_QUOTA,
+                        "id": user_dict["id"],
+                    },
+                )
+                user_dict["userRole"] = UserConstant.DEFAULT_ROLE
+                user_dict["quota"] = UserConstant.DEFAULT_QUOTA
+                user_dict["vipTime"] = None
+                user_dict["vipExpireTime"] = None
+
+        return LoginUserVO(
+            id=user_dict["id"],
+            userAccount=user_dict["userAccount"],
+            userName=user_dict["userName"],
+            userAvatar=user_dict["userAvatar"],
+            userProfile=user_dict["userProfile"],
+            userRole=user_dict["userRole"],
+            quota=user_dict.get("quota"),
+            vipTime=user_dict["vipTime"].isoformat()
+            if user_dict.get("vipTime")
+            else None,
+            vipExpireTime=user_dict["vipExpireTime"].isoformat()
+            if user_dict.get("vipExpireTime")
+            else None,
+            createTime=user_dict["createTime"].isoformat(),
+            updateTime=user_dict["updateTime"].isoformat(),
+        )
+
     async def get_by_id(self, user_id: int) -> Optional[UserVO]:
         """根据 ID 获取用户"""
         query = select(User).where(and_(User.id == user_id, User.is_delete == 0))

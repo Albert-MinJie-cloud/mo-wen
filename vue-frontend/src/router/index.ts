@@ -46,6 +46,21 @@ const router = createRouter({
       name: "用户管理",
       component: () => import("@/pages/admin/UserManagePage.vue"),
     },
+    {
+      path: "/vip",
+      name: "会员购买",
+      component: () => import("@/pages/vip/BuyVip.vue"),
+    },
+    {
+      path: "/payment/success",
+      name: "支付成功",
+      component: () => import("@/pages/vip/PaymentResult.vue"),
+    },
+    {
+      path: "/payment/cancel",
+      name: "支付取消",
+      component: () => import("@/pages/vip/PaymentResult.vue"),
+    },
   ],
 });
 

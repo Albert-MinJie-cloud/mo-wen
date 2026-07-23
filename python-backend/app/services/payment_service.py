@@ -62,7 +62,9 @@ class PaymentService:
 
         # 检查是否已是永久会员
         if self._is_permanent_vip(user):
-            raise BusinessException(ErrorCode.OPERATION_ERROR, "您已经是永久会员，无需再次购买")
+            raise BusinessException(
+                ErrorCode.OPERATION_ERROR, "您已经是永久会员，无需再次购买"
+            )
 
         # 检查是否在有效期内
         if self._is_vip_active(user):
@@ -141,36 +143,56 @@ class PaymentService:
 
     async def handle_payment_success(self, session: Any):
         """处理支付成功回调（幂等）"""
-        session_id = getattr(session, "id", None) or session.get("id")
-        metadata = getattr(session, "metadata", None) or session.get("metadata", {})
+
+        # 安全提取值：先尝试 dict-like，再尝试属性访问
+        def _safe_get(obj, key, default=None):
+            if obj is None:
+                return default
+            if isinstance(obj, dict):
+                return obj.get(key, default)
+            try:
+                return getattr(obj, key, default)
+            except Exception:
+                return default
+
+        def _safe_metadata(obj):
+            raw = _safe_get(obj, "metadata")
+            if raw is None:
+                return {}
+            if isinstance(raw, dict):
+                return raw
+            # StripeObject：使用 to_dict() 方法
+            if hasattr(raw, "to_dict"):
+                return raw.to_dict()
+            # 兜底
+            return {}
+
+        session_id = _safe_get(session, "id")
+        metadata = _safe_metadata(session)
         user_id_value = metadata.get("userId")
-        payment_intent = getattr(session, "payment_intent", None) or session.get(
-            "payment_intent"
-        )
+        payment_intent = _safe_get(session, "payment_intent")
         payment_intent_id = (
             payment_intent
             if isinstance(payment_intent, str)
-            else getattr(payment_intent, "id", None)
+            else _safe_get(payment_intent, "id")
+        )
+
+        logger.info(
+            f"handle_payment_success: session_id={session_id}, user_id_value={user_id_value}, metadata={metadata}"
         )
 
         if not session_id or not user_id_value:
             return
 
         # --- Code Review 添加：校验支付金额是否与产品定价一致 ---
-        # Stripe Checkout Session 本身保证了金额不会被客户端篡改，此处作为服务端二次校验
         product_type_value = metadata.get("productType")
         product_type = None
         if product_type_value:
             try:
                 product_type = ProductTypeEnum(product_type_value)
-                expected_amount_cents = int(
-                    product_type.price * self.CENTS_MULTIPLIER
-                )
-                actual_amount = getattr(session, "amount_total", None) or session.get(
-                    "amount_total", 0
-                )
+                expected_amount_cents = int(product_type.price * self.CENTS_MULTIPLIER)
+                actual_amount = _safe_get(session, "amount_total", 0)
                 if actual_amount != expected_amount_cents:
-                    # 金额不匹配时仅记录异常，不阻塞流程（Stripe 侧金额由 Checkout Session 保证）
                     logger.warning(
                         f"Payment amount mismatch for session {session_id}: "
                         f"expected {expected_amount_cents}, got {actual_amount}"
@@ -179,7 +201,9 @@ class PaymentService:
                 pass
 
         if product_type is None:
-            logger.warning(f"Cannot determine product type for session {session_id}, skipping")
+            logger.warning(
+                f"Cannot determine product type for session {session_id}, skipping"
+            )
             return
 
         record = await self.db.fetch_one(
@@ -204,7 +228,11 @@ class PaymentService:
         now = datetime.now()
         # 如果用户已有 VIP 且未过期，在现有到期时间上累加；否则从现在开始计算
         existing_expire = None
-        if user and user["userRole"] == UserConstant.VIP_ROLE and user.get("vipExpireTime"):
+        if (
+            user
+            and user["userRole"] == UserConstant.VIP_ROLE
+            and user.get("vipExpireTime")
+        ):
             et = user["vipExpireTime"]
             if isinstance(et, str):
                 et = datetime.fromisoformat(et)
@@ -214,7 +242,9 @@ class PaymentService:
         if product_type.duration_days is None:
             vip_expire_time = None  # 永久会员
         elif existing_expire:
-            vip_expire_time = existing_expire + timedelta(days=product_type.duration_days)
+            vip_expire_time = existing_expire + timedelta(
+                days=product_type.duration_days
+            )
         else:
             vip_expire_time = now + timedelta(days=product_type.duration_days)
 

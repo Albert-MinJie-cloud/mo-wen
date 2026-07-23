@@ -1,5 +1,6 @@
 """支付路由"""
 
+import logging
 from typing import List, Optional
 
 from databases import Database
@@ -15,6 +16,8 @@ from app.schemas.user import LoginUserVO
 from app.services.payment_service import PaymentService
 from app.models.enums import ProductTypeEnum
 
+logger = logging.getLogger(__name__)
+
 payment_router = APIRouter(prefix="/payment", tags=["Payment"])
 webhook_router = APIRouter(prefix="/webhook", tags=["Webhook"])
 
@@ -29,7 +32,6 @@ async def create_vip_payment_session(
 
     productType 可选值：VIP_MONTHLY（月付）/ VIP_YEARLY（年付）/ VIP_PERMANENT（永久，默认）
     """
-    # 校验并转换产品类型
     try:
         product_type = ProductTypeEnum(
             request.product_type if request else "VIP_PERMANENT"
@@ -84,6 +86,8 @@ async def stripe_webhook(
     try:
         event = service.construct_event(payload, stripe_signature)
         event_type = getattr(event, "type", None) or event.get("type")
+        logger.info(f"Webhook received: type={event_type}")
+
         data_object = None
         if hasattr(event, "data") and getattr(event.data, "object", None):
             data_object = event.data.object
@@ -94,7 +98,13 @@ async def stripe_webhook(
             "checkout.session.completed",
             "checkout.session.async_payment_succeeded",
         }:
+            session_id = (
+                getattr(data_object, "id", None)
+                or (data_object.get("id") if isinstance(data_object, dict) else None)
+            )
+            logger.info(f"Processing payment success: session_id={session_id}")
             await service.handle_payment_success(data_object)
         return "success"
-    except Exception:
+    except Exception as e:
+        logger.error(f"Webhook error: {e}", exc_info=True)
         return "error"
