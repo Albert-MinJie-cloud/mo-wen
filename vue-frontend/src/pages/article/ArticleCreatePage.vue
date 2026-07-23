@@ -550,6 +550,7 @@ function viewInList() {
         :is-creating="isCreating"
         :is-completed="isCompleted"
         :article="article"
+        :login-user="loginUserStore.loginUser"
         :done-count="doneCount"
         :total-steps="totalSteps"
         :elapsed-display="elapsedDisplay"
