@@ -19,7 +19,7 @@ from app.deps import require_login
 from app.managers.sse_manager import sse_emitter_manager
 from app.exceptions import ErrorCode, throw_if
 
-router = APIRouter(prefix="/article", tags=["article"])
+router = APIRouter(prefix="/article", tags=["Article"])
 
 
 @router.post("/create", response_model=BaseResponse[str])

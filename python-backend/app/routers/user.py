@@ -26,7 +26,7 @@ from app.deps import (
 from app.utils.session import set_session, remove_session
 from app.config import settings
 
-router = APIRouter(prefix="/user", tags=["user"])
+router = APIRouter(prefix="/user", tags=["User"])
 
 
 @router.post("/register", response_model=BaseResponse[int])
