@@ -172,6 +172,11 @@ function onToggleMethod(method: string, vipOnly: boolean) {
   border-radius: var(--radius-md) !important;
 }
 
+.topic-textarea :deep(textarea)::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 0.6;
+}
+
 .topic-textarea :deep(textarea):focus {
   border-color: var(--color-primary) !important;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important;
