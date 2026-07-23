@@ -12,8 +12,8 @@ from app.services.iconify_service import IconifyService
 from app.services.emoji_pack_service import EmojiPackService
 from app.services.svg_diagram_service import SvgDiagramService
 from app.services.cos_service import CosService
-from app.schemas.image import ImageRequest, ImageData
-from app.constants.article import ArticleConstant
+from app.schemas import ImageRequest, ImageData
+from app.constants import ArticleConstant
 
 logger = logging.getLogger(__name__)
 
