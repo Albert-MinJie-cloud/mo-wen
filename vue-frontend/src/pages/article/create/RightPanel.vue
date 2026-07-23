@@ -1,17 +1,21 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import {
   ClockCircleOutlined,
   InfoCircleOutlined,
   CheckCircleFilled,
   BulbOutlined,
   ArrowRightOutlined,
+  CrownOutlined,
 } from "@ant-design/icons-vue";
+import { isVip } from "@/utils/permission";
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     isCreating?: boolean;
     isCompleted?: boolean;
     article?: API.ArticleVO | null;
+    loginUser?: API.LoginUserVO | null;
     doneCount?: number;
     totalSteps?: number;
     elapsedDisplay?: string;
@@ -25,6 +29,7 @@ withDefaults(
     isCreating: false,
     isCompleted: false,
     article: null,
+    loginUser: null,
     doneCount: 0,
     totalSteps: 0,
     elapsedDisplay: "00:00",
@@ -40,6 +45,9 @@ const emit = defineEmits<{
   (e: "selectHotTopic", topicText: string): void;
 }>();
 
+const userIsVip = computed(() => isVip(props.loginUser ?? undefined));
+const quota = computed(() => props.loginUser?.quota ?? 0);
+
 // 热门选题
 const hotTopics = [
   { emoji: "🔥", text: "2026年最值得学习的5个前端框架" },
@@ -53,6 +61,34 @@ const hotTopics = [
 
 <template>
   <aside class="right-panel">
+    <!-- 会员状态 & 配额 -->
+    <div v-if="loginUser?.id" class="panel-card quota-card">
+      <div class="panel-header">
+        <CrownOutlined class="panel-header-icon" :class="{ vip: userIsVip }" />
+        <span>会员状态</span>
+      </div>
+      <div class="quota-info">
+        <div class="quota-row">
+          <span class="quota-label-text">当前身份</span>
+          <span :class="['quota-badge', userIsVip ? 'vip' : 'free']">
+            {{ userIsVip ? 'VIP 会员' : '免费用户' }}
+          </span>
+        </div>
+        <div class="quota-row">
+          <span class="quota-label-text">剩余配额</span>
+          <span class="quota-value-text">
+            {{ userIsVip ? '无限' : quota }}
+          </span>
+        </div>
+      </div>
+      <div v-if="!userIsVip" class="quota-upgrade">
+        <RouterLink to="/vip" class="upgrade-link">
+          <CrownOutlined />
+          升级 VIP 享无限配额
+        </RouterLink>
+      </div>
+    </div>
+
     <!-- 创作中：实时进度 -->
     <div v-if="isCreating" class="panel-card">
       <div class="panel-header">
@@ -208,6 +244,91 @@ const hotTopics = [
 
 .panel-header-icon.success {
   color: var(--color-success);
+}
+
+.panel-header-icon.vip {
+  color: #facc15;
+}
+
+/* 会员状态 & 配额 */
+.quota-card {
+  background: var(--color-background-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.quota-card .panel-header {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+}
+
+.quota-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quota-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.quota-label-text {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.quota-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+}
+
+.quota-badge.vip {
+  color: #facc15;
+  background: rgba(250, 204, 21, 0.1);
+}
+
+.quota-badge.free {
+  color: var(--color-text-muted);
+  background: rgba(115, 115, 115, 0.1);
+}
+
+.quota-value-text {
+  font-family: "Outfit", sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.quota-upgrade {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.upgrade-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  background: rgba(59, 130, 246, 0.08);
+  transition: all var(--transition-fast);
+}
+
+.upgrade-link:hover {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--color-primary-light);
 }
 
 /* 统计 */
