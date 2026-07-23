@@ -23,7 +23,6 @@ from app.models.article import Article
 from app.models.enums import ArticlePhaseEnum, ArticleStatusEnum, ImageMethodEnum
 from app.constants.user import UserConstant
 from app.services.article_agent_service import ArticleAgentService
-from app.services.payment_service import is_vip_active
 
 logger = logging.getLogger(__name__)
 
@@ -42,12 +41,9 @@ class ArticleService:
             ImageMethodEnum.SVG_DIAGRAM.value,
         }
 
-    @staticmethod
-    def _is_vip_or_admin(login_user: LoginUserVO) -> bool:
-        """判断用户是否为 VIP（含过期检查）或管理员"""
-        if login_user.user_role == "admin":
-            return True
-        return is_vip_active(login_user.user_role, login_user.vip_expire_time)
+    def _is_vip_or_admin(self, login_user: LoginUserVO) -> bool:
+        """是否为 VIP 或管理员"""
+        return login_user.user_role in {UserConstant.ADMIN_ROLE, UserConstant.VIP_ROLE}
 
     def _validate_image_methods(
         self,
