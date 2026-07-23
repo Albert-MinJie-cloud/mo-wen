@@ -8,7 +8,7 @@ import {
   ArrowRightOutlined,
   CrownOutlined,
 } from "@ant-design/icons-vue";
-import { isVip } from "@/utils/permission";
+import { USER_ROLE_ADMIN, USER_ROLE_VIP } from "@/constants/user";
 
 const props = withDefaults(
   defineProps<{
@@ -45,8 +45,11 @@ const emit = defineEmits<{
   (e: "selectHotTopic", topicText: string): void;
 }>();
 
-const userIsVip = computed(() => isVip(props.loginUser ?? undefined));
+// 配额相关计算属性
+const isAdmin = computed(() => props.loginUser?.userRole === USER_ROLE_ADMIN);
+const userIsVip = computed(() => isAdmin.value || props.loginUser?.userRole === USER_ROLE_VIP);
 const quota = computed(() => props.loginUser?.quota ?? 0);
+const hasQuota = computed(() => isAdmin.value || userIsVip.value || quota.value > 0);
 
 // 热门选题
 const hotTopics = [
@@ -76,9 +79,12 @@ const hotTopics = [
         </div>
         <div class="quota-row">
           <span class="quota-label-text">剩余配额</span>
-          <span class="quota-value-text">
-            {{ userIsVip ? '无限' : quota }}
+          <span :class="['quota-value-text', { exhausted: !hasQuota }]">
+            {{ isAdmin || userIsVip ? '无限' : quota }}
           </span>
+        </div>
+        <div v-if="!isAdmin && !userIsVip && quota === 0" class="quota-exhausted">
+          配额已用完，请升级 VIP 或等待明天重置
         </div>
       </div>
       <div v-if="!userIsVip" class="quota-upgrade">
@@ -303,6 +309,17 @@ const hotTopics = [
   font-size: 16px;
   font-weight: 700;
   color: var(--color-text);
+}
+
+.quota-value-text.exhausted {
+  color: var(--color-error);
+}
+
+.quota-exhausted {
+  font-size: 12px;
+  color: var(--color-error);
+  text-align: center;
+  margin-top: 4px;
 }
 
 .quota-upgrade {
