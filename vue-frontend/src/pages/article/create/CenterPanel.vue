@@ -13,6 +13,7 @@ const props = withDefaults(
     style?: string | null;
     enabledImageMethods?: string[];
     canSubmit?: boolean;
+    isVip?: boolean;
     // 流式状态
     isCreating?: boolean;
     isCompleted?: boolean;
@@ -42,6 +43,7 @@ const props = withDefaults(
     style: null,
     enabledImageMethods: () => [],
     canSubmit: false,
+    isVip: false,
     isCreating: false,
     isCompleted: false,
     titleOptions: () => [],
@@ -106,6 +108,7 @@ const emit = defineEmits<{
       :enabled-image-methods="enabledImageMethods"
       @toggle-image-method="emit('toggleImageMethod', $event)"
       :can-submit="canSubmit"
+      :is-vip="isVip"
       @start-create="emit('startCreate')"
     />
 

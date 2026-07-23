@@ -12,6 +12,8 @@ import {
 import { connectSSE, closeSSE, type SSEMessage } from "@/utils/sse";
 import { markdownToHtml } from "@/utils/markdown";
 import { getWordCount } from "@/utils/article";
+import { useLoginUserStore } from "@/stores/loginUser";
+import { isVip as checkIsVip } from "@/utils/permission";
 import LeftPanel from "./create/LeftPanel.vue";
 import type { AgentStep } from "./create/LeftPanel.vue";
 import CenterPanel from "./create/CenterPanel.vue";
@@ -26,6 +28,8 @@ import {
 } from "@ant-design/icons-vue";
 
 const router = useRouter();
+const loginUserStore = useLoginUserStore();
+const isVipUser = computed(() => checkIsVip(loginUserStore.loginUser));
 
 // ============ 核心状态 ============
 const isCreating = ref(false);
@@ -501,6 +505,7 @@ function viewInList() {
         :enabled-image-methods="enabledImageMethods"
         @toggle-image-method="toggleImageMethod"
         :can-submit="canSubmit"
+        :is-vip="isVipUser"
         @start-create="startCreate"
         :is-creating="isCreating"
         :is-completed="isCompleted"
