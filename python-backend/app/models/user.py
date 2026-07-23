@@ -66,4 +66,7 @@ class User(Base):
 
     quota = Column("quota", SmallInteger, nullable=False, default=5, comment="用户额度")
 
-    vip_time = Column("vipTime", DateTime, nullable=True, comment="VIP过期时间")
+    vip_time = Column("vipTime", DateTime, nullable=True, comment="成为会员时间")
+    vip_expire_time = Column(
+        "vipExpireTime", DateTime, nullable=True, comment="VIP过期时间，NULL表示永久会员"
+    )

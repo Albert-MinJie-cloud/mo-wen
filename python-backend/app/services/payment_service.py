@@ -1,0 +1,378 @@
+"""支付服务"""
+
+import logging
+from datetime import datetime, timedelta
+from decimal import Decimal
+from typing import Any, List, Optional
+
+import stripe
+from databases import Database
+
+from app.config import settings
+from app.constants.user import UserConstant
+from app.exceptions import BusinessException, ErrorCode
+from app.models.enums import PaymentStatusEnum, ProductTypeEnum
+from app.schemas.payment import PaymentRecordVO
+
+logger = logging.getLogger(__name__)
+
+
+def is_vip_active(user_role: str, vip_expire_time: Any) -> bool:
+    """检查 VIP 是否在有效期内
+
+    可用于依赖注入、中间件等场景判断用户会员状态。
+
+    Args:
+        user_role: 用户角色（userRole 字段）
+        vip_expire_time: VIP 过期时间（vipExpireTime 字段），None 表示永久会员
+
+    Returns:
+        True 表示 VIP 有效（永久会员或未过期），False 表示非会员或已过期
+    """
+    if user_role != UserConstant.VIP_ROLE:
+        return False
+    if vip_expire_time is None:
+        return True  # 永久会员
+    if isinstance(vip_expire_time, str):
+        vip_expire_time = datetime.fromisoformat(vip_expire_time)
+    return vip_expire_time > datetime.now()
+
+
+class PaymentService:
+    """支付服务"""
+
+    CURRENCY_USD = "usd"
+    CENTS_MULTIPLIER = Decimal("100")
+
+    def __init__(self, db: Database):
+        self.db = db
+        stripe.api_key = settings.stripe_api_key
+
+    async def create_vip_payment_session(
+        self, user_id: int, product_type: ProductTypeEnum
+    ) -> str:
+        """创建 VIP 支付会话
+
+        Args:
+            user_id: 用户 ID
+            product_type: 产品类型（月付/年付/永久）
+        """
+        self._ensure_stripe_ready(require_webhook=False)
+        user = await self._get_user_or_throw(user_id)
+
+        # 检查是否已是永久会员
+        if self._is_permanent_vip(user):
+            raise BusinessException(ErrorCode.OPERATION_ERROR, "您已经是永久会员，无需再次购买")
+
+        # 检查是否在有效期内
+        if self._is_vip_active(user):
+            expire_str = ""
+            if user.get("vipExpireTime"):
+                et = user["vipExpireTime"]
+                if isinstance(et, str):
+                    et = datetime.fromisoformat(et)
+                expire_str = f"，到期时间：{et.strftime('%Y-%m-%d %H:%M')}"
+            raise BusinessException(
+                ErrorCode.OPERATION_ERROR, f"您的会员仍在有效期内{expire_str}"
+            )
+
+        amount_cents = int(product_type.price * self.CENTS_MULTIPLIER)
+
+        # 根据产品类型动态生成描述
+        if product_type.duration_days is None:
+            duration_desc = "终身有效"
+        elif product_type.duration_days == 30:
+            duration_desc = "有效期30天"
+        elif product_type.duration_days == 365:
+            duration_desc = "有效期365天"
+        else:
+            duration_desc = f"有效期{product_type.duration_days}天"
+
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            success_url=settings.stripe_success_url,
+            cancel_url=settings.stripe_cancel_url,
+            line_items=[
+                {
+                    "price_data": {
+                        "currency": self.CURRENCY_USD,
+                        "unit_amount": amount_cents,
+                        "product_data": {
+                            "name": product_type.description,
+                            "description": f"解锁全部高级功能，无限创作配额，{duration_desc}",
+                        },
+                    },
+                    "quantity": 1,
+                }
+            ],
+            metadata={
+                "userId": str(user_id),
+                "productType": product_type.value,
+            },
+        )
+
+        await self.db.execute(
+            query="""
+                INSERT INTO payment_record (
+                    userId, stripeSessionId, amount, currency, status, productType, description
+                )
+                VALUES (
+                    :userId, :stripeSessionId, :amount, :currency, :status, :productType, :description
+                )
+            """,
+            values={
+                "userId": user_id,
+                "stripeSessionId": session.id,
+                "amount": str(product_type.price),
+                "currency": self.CURRENCY_USD,
+                "status": PaymentStatusEnum.PENDING.value,
+                "productType": product_type.value,
+                "description": product_type.description,
+            },
+        )
+        return session.url
+
+    def construct_event(self, payload: str, sig_header: str) -> Any:
+        """验证 Stripe webhook 签名并构造事件"""
+        self._ensure_stripe_ready(require_webhook=True)
+        return stripe.Webhook.construct_event(
+            payload, sig_header, settings.stripe_webhook_secret
+        )
+
+    async def handle_payment_success(self, session: Any):
+        """处理支付成功回调（幂等）"""
+        session_id = getattr(session, "id", None) or session.get("id")
+        metadata = getattr(session, "metadata", None) or session.get("metadata", {})
+        user_id_value = metadata.get("userId")
+        payment_intent = getattr(session, "payment_intent", None) or session.get(
+            "payment_intent"
+        )
+        payment_intent_id = (
+            payment_intent
+            if isinstance(payment_intent, str)
+            else getattr(payment_intent, "id", None)
+        )
+
+        if not session_id or not user_id_value:
+            return
+
+        # --- Code Review 添加：校验支付金额是否与产品定价一致 ---
+        # Stripe Checkout Session 本身保证了金额不会被客户端篡改，此处作为服务端二次校验
+        product_type_value = metadata.get("productType")
+        product_type = None
+        if product_type_value:
+            try:
+                product_type = ProductTypeEnum(product_type_value)
+                expected_amount_cents = int(
+                    product_type.price * self.CENTS_MULTIPLIER
+                )
+                actual_amount = getattr(session, "amount_total", None) or session.get(
+                    "amount_total", 0
+                )
+                if actual_amount != expected_amount_cents:
+                    # 金额不匹配时仅记录异常，不阻塞流程（Stripe 侧金额由 Checkout Session 保证）
+                    logger.warning(
+                        f"Payment amount mismatch for session {session_id}: "
+                        f"expected {expected_amount_cents}, got {actual_amount}"
+                    )
+            except ValueError:
+                pass
+
+        if product_type is None:
+            logger.warning(f"Cannot determine product type for session {session_id}, skipping")
+            return
+
+        record = await self.db.fetch_one(
+            query="""
+                SELECT id, status
+                FROM payment_record
+                WHERE stripeSessionId = :stripeSessionId
+            """,
+            values={"stripeSessionId": session_id},
+        )
+        if not record:
+            return
+
+        if record["status"] == PaymentStatusEnum.SUCCEEDED.value:
+            return
+
+        # 计算 VIP 过期时间
+        user = await self.db.fetch_one(
+            query="SELECT id, userRole, vipExpireTime FROM user WHERE id = :id AND isDelete = 0",
+            values={"id": int(user_id_value)},
+        )
+        now = datetime.now()
+        # 如果用户已有 VIP 且未过期，在现有到期时间上累加；否则从现在开始计算
+        existing_expire = None
+        if user and user["userRole"] == UserConstant.VIP_ROLE and user.get("vipExpireTime"):
+            et = user["vipExpireTime"]
+            if isinstance(et, str):
+                et = datetime.fromisoformat(et)
+            if et > now:
+                existing_expire = et
+
+        if product_type.duration_days is None:
+            vip_expire_time = None  # 永久会员
+        elif existing_expire:
+            vip_expire_time = existing_expire + timedelta(days=product_type.duration_days)
+        else:
+            vip_expire_time = now + timedelta(days=product_type.duration_days)
+
+        async with self.db.transaction():
+            await self.db.execute(
+                query="""
+                    UPDATE payment_record
+                    SET status = :status, stripePaymentIntentId = :stripePaymentIntentId
+                    WHERE id = :id
+                """,
+                values={
+                    "id": record["id"],
+                    "status": PaymentStatusEnum.SUCCEEDED.value,
+                    "stripePaymentIntentId": payment_intent_id,
+                },
+            )
+            await self.db.execute(
+                query="""
+                    UPDATE user
+                    SET userRole = :userRole, vipTime = :vipTime, vipExpireTime = :vipExpireTime
+                    WHERE id = :id
+                """,
+                values={
+                    "id": int(user_id_value),
+                    "userRole": UserConstant.VIP_ROLE,
+                    "vipTime": now,
+                    "vipExpireTime": vip_expire_time,
+                },
+            )
+
+    async def handle_refund(self, user_id: int, reason: Optional[str]) -> bool:
+        """处理退款并撤销 VIP"""
+        self._ensure_stripe_ready(require_webhook=False)
+        user = await self._get_user_or_throw(user_id)
+        if user["userRole"] != UserConstant.VIP_ROLE:
+            raise BusinessException(ErrorCode.OPERATION_ERROR, "您不是会员，无法退款")
+
+        payment_record = await self.db.fetch_one(
+            query="""
+                SELECT id, stripePaymentIntentId
+                FROM payment_record
+                WHERE userId = :userId
+                  AND status = :status
+                ORDER BY createTime DESC
+                LIMIT 1
+            """,
+            values={
+                "userId": user_id,
+                "status": PaymentStatusEnum.SUCCEEDED.value,
+            },
+        )
+        if not payment_record:
+            raise BusinessException(ErrorCode.NOT_FOUND_ERROR, "未找到支付记录")
+        if not payment_record["stripePaymentIntentId"]:
+            raise BusinessException(ErrorCode.OPERATION_ERROR, "支付记录无效")
+
+        refund = stripe.Refund.create(
+            payment_intent=payment_record["stripePaymentIntentId"],
+            reason="requested_by_customer",
+        )
+        if getattr(refund, "status", None) != "succeeded":
+            return False
+
+        async with self.db.transaction():
+            await self.db.execute(
+                query="""
+                    UPDATE payment_record
+                    SET status = :status, refundTime = :refundTime, refundReason = :refundReason
+                    WHERE id = :id
+                """,
+                values={
+                    "id": payment_record["id"],
+                    "status": PaymentStatusEnum.REFUNDED.value,
+                    "refundTime": datetime.now(),
+                    "refundReason": reason,
+                },
+            )
+            await self.db.execute(
+                query="""
+                    UPDATE user
+                    SET userRole = :userRole, vipTime = NULL, vipExpireTime = NULL, quota = :quota
+                    WHERE id = :id
+                """,
+                values={
+                    "id": user_id,
+                    "userRole": UserConstant.DEFAULT_ROLE,
+                    "quota": UserConstant.DEFAULT_QUOTA,
+                },
+            )
+        return True
+
+    async def get_payment_records(self, user_id: int) -> List[PaymentRecordVO]:
+        """获取用户支付记录"""
+        records = await self.db.fetch_all(
+            query="""
+                SELECT *
+                FROM payment_record
+                WHERE userId = :userId
+                ORDER BY createTime DESC
+                """,
+            values={"userId": user_id},
+        )
+        return [self._to_payment_record_vo(record) for record in records]
+
+    async def _get_user_or_throw(self, user_id: int):
+        user = await self.db.fetch_one(
+            query="SELECT id, userRole, vipExpireTime FROM user WHERE id = :id AND isDelete = 0",
+            values={"id": user_id},
+        )
+        if not user:
+            raise BusinessException(ErrorCode.NOT_FOUND_ERROR, "用户不存在")
+        return user
+
+    @staticmethod
+    def _is_permanent_vip(user) -> bool:
+        """检查用户是否为永久会员"""
+        return (
+            user["userRole"] == UserConstant.VIP_ROLE
+            and user.get("vipExpireTime") is None
+        )
+
+    @staticmethod
+    def _is_vip_active(user) -> bool:
+        """检查用户 VIP 是否在有效期内"""
+        if user["userRole"] != UserConstant.VIP_ROLE:
+            return False
+        expire_time = user.get("vipExpireTime")
+        if expire_time is None:
+            return True  # 永久会员
+        if isinstance(expire_time, str):
+            expire_time = datetime.fromisoformat(expire_time)
+        return expire_time > datetime.now()
+
+    def _to_payment_record_vo(self, record: Any) -> PaymentRecordVO:
+        record_dict = dict(record)
+        return PaymentRecordVO(
+            id=record_dict["id"],
+            userId=record_dict["userId"],
+            stripeSessionId=record_dict.get("stripeSessionId"),
+            stripePaymentIntentId=record_dict.get("stripePaymentIntentId"),
+            amount=float(record_dict["amount"]),
+            currency=record_dict["currency"],
+            status=record_dict["status"],
+            productType=record_dict["productType"],
+            description=record_dict.get("description"),
+            refundTime=record_dict["refundTime"].isoformat()
+            if record_dict.get("refundTime")
+            else None,
+            refundReason=record_dict.get("refundReason"),
+            createTime=record_dict["createTime"].isoformat(),
+            updateTime=record_dict["updateTime"].isoformat(),
+        )
+
+    def _ensure_stripe_ready(self, require_webhook: bool):
+        """校验 Stripe 配置是否可用"""
+        if not settings.stripe_api_key:
+            raise BusinessException(ErrorCode.SYSTEM_ERROR, "Stripe API Key 未配置")
+        if require_webhook and not settings.stripe_webhook_secret:
+            raise BusinessException(
+                ErrorCode.SYSTEM_ERROR, "Stripe Webhook Secret 未配置"
+            )
