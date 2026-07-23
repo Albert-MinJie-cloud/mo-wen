@@ -81,9 +81,18 @@ async def logout(
 
 
 @router.get("/get/login", response_model=BaseResponse[LoginUserVO])
-async def get_login_user(current_user: LoginUserVO = Depends(require_login)):
-    """获取当前登录用户"""
-    return BaseResponse.success(data=current_user)
+async def get_login_user(
+    current_user: LoginUserVO = Depends(require_login),
+    session_id: Optional[str] = Depends(get_session_id),
+    db: Database = Depends(get_db),
+):
+    """获取当前登录用户（从数据库重新读取，确保 VIP 状态最新）"""
+    service = UserService(db)
+    user = await service.get_login_user_by_id(current_user.id)
+    # 更新 session 中的用户信息
+    if user and session_id:
+        await set_session(session_id, {"user": user.model_dump(by_alias=True)})
+    return BaseResponse.success(data=user or current_user)
 
 
 @router.get("/get", response_model=BaseResponse[UserVO])
