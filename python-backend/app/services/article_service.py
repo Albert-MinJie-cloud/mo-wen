@@ -91,8 +91,8 @@ class ArticleService:
         enabled_image_methods: Optional[List[str]] = None,
     ) -> str:
         """创建文章任务"""
+        self._validate_image_methods(enabled_image_methods, login_user)
         final_image_methods = self._process_image_methods(enabled_image_methods, login_user)
-        self._validate_image_methods(final_image_methods, login_user)
 
         task_id = str(uuid.uuid4())
         now = datetime.now()
