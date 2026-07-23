@@ -219,6 +219,21 @@ function statusLabel(status: string): string {
   return map[status] || status;
 }
 
+// 计算支付记录对应的 VIP 到期日
+const durationDays: Record<string, number | null> = {
+  VIP_MONTHLY: 30,
+  VIP_YEARLY: 365,
+  VIP_PERMANENT: null,
+};
+function getExpireDate(record: API.PaymentRecordVO): string {
+  if (record.status !== "SUCCEEDED") return "-";
+  const days = durationDays[record.productType];
+  if (days === null || days === undefined) return "永久有效";
+  const d = new Date(record.createTime);
+  d.setDate(d.getDate() + days);
+  return d.toLocaleDateString("zh-CN");
+}
+
 // 数字格式化为美元
 function formatUSD(amount: number): string {
   return `$${amount.toFixed(2)}`;
@@ -390,6 +405,11 @@ onMounted(() => {
               <span :class="['record-status', `status-${record.status.toLowerCase()}`]">
                 {{ statusLabel(record.status) }}
               </span>
+            </template>
+          </a-table-column>
+          <a-table-column title="有效期" key="expireDate">
+            <template #default="{ record }">
+              <span class="record-expire">{{ getExpireDate(record) }}</span>
             </template>
           </a-table-column>
           <a-table-column title="时间" dataIndex="createTime" key="createTime">
@@ -793,6 +813,11 @@ onMounted(() => {
 
 .record-product {
   font-weight: 500;
+}
+
+.record-expire {
+  font-size: 13px;
+  color: var(--color-text-secondary);
 }
 
 .record-status {
