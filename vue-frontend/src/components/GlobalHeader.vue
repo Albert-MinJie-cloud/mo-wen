@@ -56,7 +56,7 @@
                   @click="router.push('/vip')"
                 >
                   <CrownOutlined />
-                  <span>永久会员权益</span>
+                  <span>会员中心</span>
                 </a-menu-item>
                 <a-menu-divider v-if="isVip" />
                 <a-menu-item @click="doLogout" class="dropdown-item">
