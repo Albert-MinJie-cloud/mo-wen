@@ -49,6 +49,22 @@ class ArticleService:
             return True
         return is_vip_active(login_user.user_role, login_user.vip_expire_time)
 
+    def _validate_image_methods(
+        self,
+        enabled_image_methods: Optional[List[str]],
+        login_user: LoginUserVO,
+    ):
+        """校验普通用户高级配图权限"""
+        if not enabled_image_methods or self._is_vip_or_admin(login_user):
+            return
+
+        for method in enabled_image_methods:
+            if method in self._vip_only_image_methods:
+                raise BusinessException(
+                    ErrorCode.NO_AUTH_ERROR,
+                    "高级配图功能（AI 生图、SVG 图表）仅限 VIP 会员使用",
+                )
+
     def _process_image_methods(
         self,
         enabled_image_methods: Optional[List[str]],
@@ -78,6 +94,7 @@ class ArticleService:
         style: Optional[str] = None,
         enabled_image_methods: Optional[List[str]] = None,
     ) -> str:
+        self._validate_image_methods(enabled_image_methods, login_user)
         enabled_image_methods = self._process_image_methods(
             enabled_image_methods, login_user
         )
