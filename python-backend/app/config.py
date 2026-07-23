@@ -71,6 +71,12 @@ class Settings(BaseSettings):
     emoji_pack_suffix: str = "表情包"
     emoji_pack_timeout: int = 10000
 
+    # Stripe 支付配置
+    stripe_api_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_success_url: str = "http://localhost:5173/payment/success"
+    stripe_cancel_url: str = "http://localhost:5173/payment/cancel"
+
     # SVG 示意图配置
     svg_diagram_default_width: int = 800
     svg_diagram_default_height: int = 600

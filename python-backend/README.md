@@ -28,10 +28,11 @@ mysql -u root -p < ../sql/create_table.sql
 npm install -g @mermaid-js/mermaid-cli
 
 # 启动服务
-uv run uvicorn app.main:app --reload
+uv run uvicorn app.main:app --reload --port 8567
 ```
 
 服务启动后访问：
+
 - API 文档：http://localhost:8567/docs
 - 健康检查：http://localhost:8567/api/health
 
@@ -114,95 +115,98 @@ PENDING → TITLE_GENERATING → TITLE_SELECTING → OUTLINE_GENERATING → OUTL
 
 ### 三阶段异步执行
 
-| 阶段 | 触发方式 | 执行内容 | SSE 结束事件 |
-|------|---------|---------|-------------|
-| 阶段1 | `POST /article/create` | Agent 1 生成多组标题方案 | `TITLES_GENERATED` |
-| 阶段2 | `POST /article/confirm-title` | Agent 2 流式生成大纲 | `OUTLINE_GENERATED` |
-| 阶段3 | `POST /article/confirm-outline` | Agent 3+4+5 正文、配图、合成 | `ALL_COMPLETE` |
+| 阶段  | 触发方式                        | 执行内容                     | SSE 结束事件        |
+| ----- | ------------------------------- | ---------------------------- | ------------------- |
+| 阶段1 | `POST /article/create`          | Agent 1 生成多组标题方案     | `TITLES_GENERATED`  |
+| 阶段2 | `POST /article/confirm-title`   | Agent 2 流式生成大纲         | `OUTLINE_GENERATED` |
+| 阶段3 | `POST /article/confirm-outline` | Agent 3+4+5 正文、配图、合成 | `ALL_COMPLETE`      |
 
 每个阶段通过独立的 SSE 连接推送进度。
 
 ### API 接口
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/article/create` | 创建文章任务（触发阶段1） |
-| POST | `/api/article/confirm-title` | 确认标题（触发阶段2） |
-| POST | `/api/article/confirm-outline` | 确认大纲（触发阶段3） |
-| POST | `/api/article/ai-modify-outline` | AI 修改大纲 |
-| GET | `/api/article/progress/{task_id}` | SSE 进度推送 |
-| GET | `/api/article/{task_id}` | 获取文章详情 |
-| POST | `/api/article/list` | 分页查询文章列表 |
-| POST | `/api/article/delete` | 删除文章（软删除） |
+| 方法 | 路径                              | 说明                      |
+| ---- | --------------------------------- | ------------------------- |
+| POST | `/api/article/create`             | 创建文章任务（触发阶段1） |
+| POST | `/api/article/confirm-title`      | 确认标题（触发阶段2）     |
+| POST | `/api/article/confirm-outline`    | 确认大纲（触发阶段3）     |
+| POST | `/api/article/ai-modify-outline`  | AI 修改大纲               |
+| GET  | `/api/article/progress/{task_id}` | SSE 进度推送              |
+| GET  | `/api/article/{task_id}`          | 获取文章详情              |
+| POST | `/api/article/list`               | 分页查询文章列表          |
+| POST | `/api/article/delete`             | 删除文章（软删除）        |
 
 全部接口需要登录态。
 
 ### SSE 消息类型
 
-| 类型 | 说明 |
-|------|------|
-| `TITLES_GENERATED` | 标题方案生成完成，携带 titleOptions（等待用户选择） |
-| `AGENT2_STREAMING` | 大纲流式输出 |
-| `OUTLINE_GENERATED` | 大纲生成完成，携带 outline（等待用户编辑） |
-| `AGENT3_STREAMING` | 正文流式输出 |
-| `AGENT3_COMPLETE` | 正文生成完成 |
-| `AGENT4_COMPLETE` | 配图需求分析完成 |
-| `IMAGE_COMPLETE` | 单张配图完成 |
-| `AGENT5_COMPLETE` | 配图生成完成 |
-| `MERGE_COMPLETE` | 图文合成完成 |
-| `ALL_COMPLETE` | 全部完成 |
-| `ERROR` | 错误 |
+| 类型                | 说明                                                |
+| ------------------- | --------------------------------------------------- |
+| `TITLES_GENERATED`  | 标题方案生成完成，携带 titleOptions（等待用户选择） |
+| `AGENT2_STREAMING`  | 大纲流式输出                                        |
+| `OUTLINE_GENERATED` | 大纲生成完成，携带 outline（等待用户编辑）          |
+| `AGENT3_STREAMING`  | 正文流式输出                                        |
+| `AGENT3_COMPLETE`   | 正文生成完成                                        |
+| `AGENT4_COMPLETE`   | 配图需求分析完成                                    |
+| `IMAGE_COMPLETE`    | 单张配图完成                                        |
+| `AGENT5_COMPLETE`   | 配图生成完成                                        |
+| `MERGE_COMPLETE`    | 图文合成完成                                        |
+| `ALL_COMPLETE`      | 全部完成                                            |
+| `ERROR`             | 错误                                                |
 
 ### 配图支持
 
 6 种来源，通过策略模式统一管理：
 
-| 来源 | 说明 |
-|------|------|
-| PEXELS | 真实场景照片（图库检索） |
-| NANO_BANANA | Gemini AI 创意生图 |
-| MERMAID | 流程图/架构图（需要 mmdc CLI） |
-| ICONIFY | 开源图标库（SVG） |
-| EMOJI_PACK | 表情包（Bing 搜索） |
-| SVG_DIAGRAM | LLM 生成概念示意图 |
+| 来源        | 说明                           |
+| ----------- | ------------------------------ |
+| PEXELS      | 真实场景照片（图库检索）       |
+| NANO_BANANA | Gemini AI 创意生图             |
+| MERMAID     | 流程图/架构图（需要 mmdc CLI） |
+| ICONIFY     | 开源图标库（SVG）              |
+| EMOJI_PACK  | 表情包（Bing 搜索）            |
+| SVG_DIAGRAM | LLM 生成概念示意图             |
 
 ## 环境变量
 
 ### 基础配置
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| SERVER_HOST | 服务地址 | 0.0.0.0 |
-| SERVER_PORT | 服务端口 | 8567 |
-| DB_HOST | 数据库地址 | localhost |
-| DB_PORT | 数据库端口 | 3306 |
-| DB_NAME | 数据库名称 | mo-wen |
-| DB_USER | 数据库用户 | root |
-| DB_PASSWORD | 数据库密码 | - |
-| REDIS_HOST | Redis 地址 | localhost |
-| REDIS_PORT | Redis 端口 | 6379 |
-| REDIS_DB | Redis 数据库编号 | 0 |
-| REDIS_PASSWORD | Redis 密码 | - |
-| SESSION_SECRET_KEY | Session 密钥 | - |
-| SESSION_MAX_AGE | Session 有效期（秒） | 2592000 |
-| PASSWORD_SALT | 密码加密盐值 | - |
+
+| 变量               | 说明                 | 默认值    |
+| ------------------ | -------------------- | --------- |
+| SERVER_HOST        | 服务地址             | 0.0.0.0   |
+| SERVER_PORT        | 服务端口             | 8567      |
+| DB_HOST            | 数据库地址           | localhost |
+| DB_PORT            | 数据库端口           | 3306      |
+| DB_NAME            | 数据库名称           | mo-wen    |
+| DB_USER            | 数据库用户           | root      |
+| DB_PASSWORD        | 数据库密码           | -         |
+| REDIS_HOST         | Redis 地址           | localhost |
+| REDIS_PORT         | Redis 端口           | 6379      |
+| REDIS_DB           | Redis 数据库编号     | 0         |
+| REDIS_PASSWORD     | Redis 密码           | -         |
+| SESSION_SECRET_KEY | Session 密钥         | -         |
+| SESSION_MAX_AGE    | Session 有效期（秒） | 2592000   |
+| PASSWORD_SALT      | 密码加密盐值         | -         |
 
 ### AI 配置
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| DASHSCOPE_API_KEY | DashScope API Key（LLM 调用） | - |
-| DASHSCOPE_MODEL | DashScope 模型 | qwen-plus |
+
+| 变量              | 说明                          | 默认值    |
+| ----------------- | ----------------------------- | --------- |
+| DASHSCOPE_API_KEY | DashScope API Key（LLM 调用） | -         |
+| DASHSCOPE_MODEL   | DashScope 模型                | qwen-plus |
 
 ### 图片服务
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| PEXELS_API_KEY | Pexels API Key | - |
-| NANO_BANANA_API_KEY | Gemini API Key | - |
-| NANO_BANANA_MODEL | Gemini 生图模型 | gemini-2.5-flash-image |
-| NANO_BANANA_ASPECT_RATIO | 生图宽高比 | 16:9 |
-| TENcent_COS_SECRET_ID | 腾讯云 COS SecretId | - |
-| TENcent_COS_SECRET_KEY | 腾讯云 COS SecretKey | - |
-| TENcent_COS_REGION | COS 区域 | ap-beijing |
-| TENcent_COS_BUCKET | COS Bucket 名称 | - |
+
+| 变量                     | 说明                 | 默认值                 |
+| ------------------------ | -------------------- | ---------------------- |
+| PEXELS_API_KEY           | Pexels API Key       | -                      |
+| NANO_BANANA_API_KEY      | Gemini API Key       | -                      |
+| NANO_BANANA_MODEL        | Gemini 生图模型      | gemini-2.5-flash-image |
+| NANO_BANANA_ASPECT_RATIO | 生图宽高比           | 16:9                   |
+| TENcent_COS_SECRET_ID    | 腾讯云 COS SecretId  | -                      |
+| TENcent_COS_SECRET_KEY   | 腾讯云 COS SecretKey | -                      |
+| TENcent_COS_REGION       | COS 区域             | ap-beijing             |
+| TENcent_COS_BUCKET       | COS Bucket 名称      | -                      |
 
 ## 清理重建
 

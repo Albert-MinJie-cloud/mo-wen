@@ -150,6 +150,15 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponseListPaymentRecordVO_ = {
+    /** Code 状态码 */
+    code?: number;
+    /** Data 响应数据 */
+    data?: PaymentRecordVO[] | null;
+    /** Message 响应消息 */
+    message?: string;
+  };
+
   type BaseResponseLoginUserVO_ = {
     /** Code 状态码 */
     code?: number;
@@ -198,6 +207,15 @@ declare namespace API {
     SESSION?: string | null;
   };
 
+  type CreatePaymentSessionRequest = {
+    /** Producttype 产品类型：VIP_MONTHLY/VIP_YEARLY/VIP_PERMANENT */
+    productType?: string;
+  };
+
+  type createVipPaymentSessionApiPaymentCreateVipSessionPostParams = {
+    SESSION?: string | null;
+  };
+
   type deleteArticleApiArticleDeletePostParams = {
     SESSION?: string | null;
   };
@@ -217,6 +235,10 @@ declare namespace API {
   };
 
   type getLoginUserApiUserGetLoginGetParams = {
+    SESSION?: string | null;
+  };
+
+  type getPaymentRecordsApiPaymentRecordsGetParams = {
     SESSION?: string | null;
   };
 
@@ -261,8 +283,10 @@ declare namespace API {
     updateTime: string;
     /** Quota 用户额度 */
     quota?: number | null;
-    /** Viptime VIP过期时间 */
+    /** Viptime 成为会员时间 */
     vipTime?: string | null;
+    /** Vipexpiretime VIP过期时间，NULL表示永久会员 */
+    vipExpireTime?: string | null;
   };
 
   type logoutApiUserLogoutPostParams = {
@@ -276,6 +300,40 @@ declare namespace API {
     title: string;
     /** Points */
     points: string[];
+  };
+
+  type PaymentRecordVO = {
+    /** Id */
+    id: number;
+    /** Userid */
+    userId: number;
+    /** Stripesessionid */
+    stripeSessionId?: string | null;
+    /** Stripepaymentintentid */
+    stripePaymentIntentId?: string | null;
+    /** Amount */
+    amount: number;
+    /** Currency */
+    currency: string;
+    /** Status */
+    status: string;
+    /** Producttype */
+    productType: string;
+    /** Description */
+    description?: string | null;
+    /** Refundtime */
+    refundTime?: string | null;
+    /** Refundreason */
+    refundReason?: string | null;
+    /** Createtime */
+    createTime: string;
+    /** Updatetime */
+    updateTime: string;
+  };
+
+  type refundApiPaymentRefundPostParams = {
+    reason?: string | null;
+    SESSION?: string | null;
   };
 
   type TitleOption = {
@@ -371,8 +429,10 @@ declare namespace API {
     createTime: string;
     /** Quota 用户额度 */
     quota?: number | null;
-    /** Viptime VIP过期时间 */
+    /** Viptime 成为会员时间 */
     vipTime?: string | null;
+    /** Vipexpiretime VIP过期时间，NULL表示永久会员 */
+    vipExpireTime?: string | null;
   };
 
   type ValidationError = {
