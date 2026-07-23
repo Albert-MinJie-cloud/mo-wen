@@ -5,8 +5,12 @@
 import * as user from "./user";
 import * as health from "./health";
 import * as article from "./article";
+import * as zhifuguanli from "./zhifuguanli";
+import * as zhifuhuidiao from "./zhifuhuidiao";
 export default {
   user,
   health,
   article,
+  zhifuguanli,
+  zhifuhuidiao,
 };

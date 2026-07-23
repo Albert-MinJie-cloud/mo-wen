@@ -1,5 +1,6 @@
 """用户服务"""
 
+from datetime import datetime
 from typing import Optional, List, Tuple
 from sqlalchemy import select, func, and_, or_
 from databases import Database
@@ -103,6 +104,27 @@ class UserService:
 
         user_dict = dict(user)
 
+        # 检查 VIP 是否过期，过期自动降级为普通用户
+        vip_expire_time = user_dict.get("vipExpireTime")
+        if user_dict.get("userRole") == "vip" and vip_expire_time is not None:
+            if vip_expire_time < datetime.now():
+                await self.db.execute(
+                    query="""
+                        UPDATE user SET userRole = :userRole, quota = :quota,
+                        vipTime = NULL, vipExpireTime = NULL WHERE id = :id
+                    """,
+                    values={
+                        "userRole": UserConstant.DEFAULT_ROLE,
+                        "quota": UserConstant.DEFAULT_QUOTA,
+                        "id": user_dict["id"],
+                    },
+                )
+                # 更新内存中的用户信息以返回正确的状态
+                user_dict["userRole"] = UserConstant.DEFAULT_ROLE
+                user_dict["quota"] = UserConstant.DEFAULT_QUOTA
+                user_dict["vipTime"] = None
+                user_dict["vipExpireTime"] = None
+
         # 返回登录用户信息
         return LoginUserVO(
             id=user_dict["id"],
@@ -114,6 +136,9 @@ class UserService:
             quota=user_dict.get("quota"),
             vipTime=user_dict["vipTime"].isoformat()
             if user_dict.get("vipTime")
+            else None,
+            vipExpireTime=user_dict["vipExpireTime"].isoformat()
+            if user_dict.get("vipExpireTime")
             else None,
             createTime=user_dict["createTime"].isoformat(),
             updateTime=user_dict["updateTime"].isoformat(),
