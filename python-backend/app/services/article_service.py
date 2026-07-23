@@ -42,6 +42,35 @@ class ArticleService:
             ImageMethodEnum.SVG_DIAGRAM.value,
         }
 
+    @staticmethod
+    def _is_vip_or_admin(login_user: LoginUserVO) -> bool:
+        """判断用户是否为 VIP（含过期检查）或管理员"""
+        if login_user.user_role == "admin":
+            return True
+        return is_vip_active(login_user.user_role, login_user.vip_expire_time)
+
+    def _process_image_methods(
+        self,
+        enabled_image_methods: Optional[List[str]],
+        login_user: LoginUserVO,
+    ) -> Optional[List[str]]:
+        """处理配图方式：VIP 放行全部，非 VIP 过滤 VIP 专属并设置默认值"""
+        # VIP 或管理员：用户传了什么就用什么，没传则全部可用（None = 不限制）
+        if self._is_vip_or_admin(login_user):
+            return enabled_image_methods if enabled_image_methods else None
+
+        # 非 VIP：过滤掉 VIP 专属方式
+        if enabled_image_methods:
+            filtered = [
+                m for m in enabled_image_methods
+                if m not in self._vip_only_image_methods
+            ]
+            if filtered:
+                return filtered
+
+        # 没有有效的配图方式，使用默认非 VIP 方式
+        return list(self._default_non_vip_image_methods)
+
     async def create_article_task_with_quota_check(
         self,
         topic: str,
@@ -49,18 +78,9 @@ class ArticleService:
         style: Optional[str] = None,
         enabled_image_methods: Optional[List[str]] = None,
     ) -> str:
-        # 非 VIP 用户过滤掉 VIP 专属配图方式（含过期检查）
-        user_is_vip = login_user.user_role == "admin" or is_vip_active(
-            login_user.user_role, login_user.vip_expire_time
+        enabled_image_methods = self._process_image_methods(
+            enabled_image_methods, login_user
         )
-        if not user_is_vip:
-            if enabled_image_methods:
-                enabled_image_methods = [
-                    m for m in enabled_image_methods
-                    if m not in self._vip_only_image_methods
-                ]
-            if not enabled_image_methods:
-                enabled_image_methods = self._default_non_vip_image_methods.copy()
 
         task_id = str(uuid.uuid4())
         query = """
