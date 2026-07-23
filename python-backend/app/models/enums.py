@@ -158,3 +158,13 @@ class ProductTypeEnum(str, Enum):
             ProductTypeEnum.VIP_PERMANENT: None,
         }
         return durations[self]
+
+    @property
+    def tier(self) -> int:
+        """返回会员档位级别，用于升级比较"""
+        tiers = {
+            ProductTypeEnum.VIP_MONTHLY: 1,
+            ProductTypeEnum.VIP_YEARLY: 2,
+            ProductTypeEnum.VIP_PERMANENT: 3,
+        }
+        return tiers[self]

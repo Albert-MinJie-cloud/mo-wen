@@ -12,10 +12,16 @@ export const isAdmin = (user?: API.LoginUserVO): boolean => {
 };
 
 /**
- * 判断用户是否为 VIP（包括管理员）
+ * 判断用户是否为 VIP（包括管理员），含过期检查
  */
 export const isVip = (user?: API.LoginUserVO): boolean => {
-  return user?.userRole === USER_ROLE_VIP || isAdmin(user);
+  if (!user) return false;
+  if (user.userRole === USER_ROLE_ADMIN) return true;
+  if (user.userRole !== USER_ROLE_VIP) return false;
+  // 永久会员（无过期时间）
+  if (!user.vipExpireTime) return true;
+  // 检查是否在有效期内
+  return new Date(user.vipExpireTime) > new Date();
 };
 
 /**

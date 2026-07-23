@@ -66,17 +66,20 @@ class PaymentService:
                 ErrorCode.OPERATION_ERROR, "您已经是永久会员，无需再次购买"
             )
 
-        # 检查是否在有效期内
+        # 检查是否在有效期内（允许升级，拦截降级和同档重复购买）
         if self._is_vip_active(user):
-            expire_str = ""
-            if user.get("vipExpireTime"):
-                et = user["vipExpireTime"]
-                if isinstance(et, str):
-                    et = datetime.fromisoformat(et)
-                expire_str = f"，到期时间：{et.strftime('%Y-%m-%d %H:%M')}"
-            raise BusinessException(
-                ErrorCode.OPERATION_ERROR, f"您的会员仍在有效期内{expire_str}"
-            )
+            current_tier = await self._get_current_vip_tier(user_id)
+            if current_tier is None:
+                raise BusinessException(
+                    ErrorCode.OPERATION_ERROR, "您的会员仍在有效期内"
+                )
+            if product_type.tier <= current_tier.tier:
+                raise BusinessException(
+                    ErrorCode.OPERATION_ERROR,
+                    f"您已是{current_tier.description}，"
+                    f"无法降级或重复购买同档方案，请选择更高档位",
+                )
+            # 升级放行，继续创建支付会话
 
         amount_cents = int(product_type.price * self.CENTS_MULTIPLIER)
 
@@ -231,7 +234,7 @@ class PaymentService:
         if (
             user
             and user["userRole"] == UserConstant.VIP_ROLE
-            and user.get("vipExpireTime")
+            and self._value(user, "vipExpireTime")
         ):
             et = user["vipExpireTime"]
             if isinstance(et, str):
@@ -247,6 +250,11 @@ class PaymentService:
             )
         else:
             vip_expire_time = now + timedelta(days=product_type.duration_days)
+
+        # 首次成为 VIP 才设置 vipTime，升级时保留原值
+        vip_time = now
+        if user and user["userRole"] == UserConstant.VIP_ROLE:
+            vip_time = self._value(user, "vipTime", now)
 
         async with self.db.transaction():
             await self.db.execute(
@@ -270,7 +278,7 @@ class PaymentService:
                 values={
                     "id": int(user_id_value),
                     "userRole": UserConstant.VIP_ROLE,
-                    "vipTime": now,
+                    "vipTime": vip_time,
                     "vipExpireTime": vip_expire_time,
                 },
             )
@@ -358,20 +366,51 @@ class PaymentService:
             raise BusinessException(ErrorCode.NOT_FOUND_ERROR, "用户不存在")
         return user
 
+    async def _get_current_vip_tier(self, user_id: int) -> Optional[ProductTypeEnum]:
+        """从最新支付记录获取用户当前 VIP 档次"""
+        record = await self.db.fetch_one(
+            query="""
+                SELECT productType FROM payment_record
+                WHERE userId = :uid AND status = :status
+                ORDER BY createTime DESC
+                LIMIT 1
+            """,
+            values={
+                "uid": user_id,
+                "status": PaymentStatusEnum.SUCCEEDED.value,
+            },
+        )
+        if not record:
+            return None
+        try:
+            return ProductTypeEnum(record["productType"])
+        except ValueError:
+            return None
+
     @staticmethod
-    def _is_permanent_vip(user) -> bool:
+    def _value(user, key, default=None):
+        """安全获取值，兼容 Record 对象和 dict"""
+        if isinstance(user, dict):
+            return user.get(key, default)
+        try:
+            return user[key]
+        except (KeyError, TypeError):
+            return default
+
+    @classmethod
+    def _is_permanent_vip(cls, user) -> bool:
         """检查用户是否为永久会员"""
         return (
             user["userRole"] == UserConstant.VIP_ROLE
-            and user.get("vipExpireTime") is None
+            and cls._value(user, "vipExpireTime") is None
         )
 
-    @staticmethod
-    def _is_vip_active(user) -> bool:
+    @classmethod
+    def _is_vip_active(cls, user) -> bool:
         """检查用户 VIP 是否在有效期内"""
         if user["userRole"] != UserConstant.VIP_ROLE:
             return False
-        expire_time = user.get("vipExpireTime")
+        expire_time = cls._value(user, "vipExpireTime")
         if expire_time is None:
             return True  # 永久会员
         if isinstance(expire_time, str):
