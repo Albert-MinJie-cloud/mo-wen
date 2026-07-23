@@ -465,13 +465,22 @@ class ArticleService:
             },
         )
 
+    def _require_vip(self, login_user: LoginUserVO, message: str = "此功能仅限 VIP 会员使用"):
+        """要求 VIP 权限，否则抛出异常"""
+        throw_if(
+            not self._is_vip_or_admin(login_user),
+            ErrorCode.NO_AUTH_ERROR,
+            message,
+        )
+
     async def ai_modify_outline(
         self,
         task_id: str,
         modify_suggestion: str,
         login_user: LoginUserVO,
     ) -> List[OutlineSection]:
-        """AI 修改大纲"""
+        """AI 修改大纲（VIP 功能）"""
+        self._require_vip(login_user, "AI 修改大纲功能仅限 VIP 会员使用")
         article = await self.get_by_task_id(task_id)
         throw_if_not(article, ErrorCode.NOT_FOUND_ERROR, "文章不存在")
         self._check_article_permission(article, login_user)
