@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from app.schemas.common import BaseResponse
 
-router = APIRouter(prefix="/health", tags=["health"])
+router = APIRouter(prefix="/health", tags=["Health"])
 
 @router.get("", response_model=BaseResponse[str])
 def health_check():

@@ -15,8 +15,8 @@ from app.schemas.user import LoginUserVO
 from app.services.payment_service import PaymentService
 from app.models.enums import ProductTypeEnum
 
-payment_router = APIRouter(prefix="/payment", tags=["支付管理"])
-webhook_router = APIRouter(prefix="/webhook", tags=["支付回调"])
+payment_router = APIRouter(prefix="/payment", tags=["Payment"])
+webhook_router = APIRouter(prefix="/webhook", tags=["Webhook"])
 
 
 @payment_router.post("/create-vip-session", response_model=BaseResponse[str])
