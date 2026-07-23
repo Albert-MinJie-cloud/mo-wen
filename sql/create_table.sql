@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS user
     updateTime   datetime     default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete     tinyint      default 0                 not null comment '是否删除',
     quota        smallint     default 5                 not null comment '用户额度', 
-    vipTime      datetime     default null                       comment 'VIP过期时间',
+    vipTime       datetime     default null                       comment '成为会员时间',
+    vipExpireTime datetime     default null                       comment 'VIP过期时间，NULL=永久会员',
     UNIQUE KEY uk_userAccount (userAccount),
     INDEX idx_userName (userName)
 ) comment '用户' collate = utf8mb4_unicode_ci;

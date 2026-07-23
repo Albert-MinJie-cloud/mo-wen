@@ -79,7 +79,10 @@ class UserVO(BaseModel):
     user_role: str = Field(..., alias="userRole")
     create_time: str = Field(..., alias="createTime")
     quota: Optional[int] = Field(None, description="用户额度")
-    vip_time: Optional[str] = Field(None, alias="vipTime", description="VIP过期时间")
+    vip_time: Optional[str] = Field(None, alias="vipTime", description="成为会员时间")
+    vip_expire_time: Optional[str] = Field(
+        None, alias="vipExpireTime", description="VIP过期时间，NULL表示永久会员"
+    )
 
     class Config:
         populate_by_name = True
@@ -97,7 +100,10 @@ class LoginUserVO(BaseModel):
     create_time: str = Field(..., alias="createTime")
     update_time: str = Field(..., alias="updateTime")
     quota: Optional[int] = Field(None, description="用户额度")
-    vip_time: Optional[str] = Field(None, alias="vipTime", description="VIP过期时间")
+    vip_time: Optional[str] = Field(None, alias="vipTime", description="成为会员时间")
+    vip_expire_time: Optional[str] = Field(
+        None, alias="vipExpireTime", description="VIP过期时间，NULL表示永久会员"
+    )
 
     class Config:
         populate_by_name = True
