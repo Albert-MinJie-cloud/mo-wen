@@ -23,6 +23,7 @@ from app.models.article import Article
 from app.models.enums import ArticlePhaseEnum, ArticleStatusEnum, ImageMethodEnum
 from app.constants.user import UserConstant
 from app.services.article_agent_service import ArticleAgentService
+from app.services.payment_service import is_vip_active
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,19 @@ class ArticleService:
         style: Optional[str] = None,
         enabled_image_methods: Optional[List[str]] = None,
     ) -> str:
+        # 非 VIP 用户过滤掉 VIP 专属配图方式（含过期检查）
+        user_is_vip = login_user.user_role == "admin" or is_vip_active(
+            login_user.user_role, login_user.vip_expire_time
+        )
+        if not user_is_vip:
+            if enabled_image_methods:
+                enabled_image_methods = [
+                    m for m in enabled_image_methods
+                    if m not in self._vip_only_image_methods
+                ]
+            if not enabled_image_methods:
+                enabled_image_methods = self._default_non_vip_image_methods.copy()
+
         task_id = str(uuid.uuid4())
         query = """
         INSERT INTO article (taskId, userId, topic, style, status, createTime, enabledImageMethods)
