@@ -22,12 +22,12 @@ export const ARTICLE_STYLE_LABELS: Record<string, string> = Object.fromEntries(
 
 /** 配图方式选项 */
 export const IMAGE_METHOD_OPTIONS = [
-  { value: "PEXELS", label: "Pexels", desc: "高质量摄影图库" },
-  { value: "MERMAID", label: "Mermaid", desc: "代码驱动图表" },
-  { value: "ICONIFY", label: "Iconify", desc: "开源图标集" },
-  { value: "EMOJI_PACK", label: "表情包", desc: "趣味表情配图" },
-  { value: "NANO_BANANA", label: "AI 生图", desc: "AI 生成图片" },
-  { value: "SVG_DIAGRAM", label: "SVG 图表", desc: "矢量数据图表" },
+  { value: "PEXELS", label: "Pexels", desc: "高质量摄影图库", vipOnly: false },
+  { value: "MERMAID", label: "Mermaid", desc: "代码驱动图表", vipOnly: false },
+  { value: "ICONIFY", label: "Iconify", desc: "开源图标集", vipOnly: false },
+  { value: "EMOJI_PACK", label: "表情包", desc: "趣味表情配图", vipOnly: false },
+  { value: "NANO_BANANA", label: "AI 生图", desc: "AI 生成图片", vipOnly: true },
+  { value: "SVG_DIAGRAM", label: "SVG 图表", desc: "矢量数据图表", vipOnly: true },
 ] as const;
 
 /** 去除 Markdown 标记后统计字数 */

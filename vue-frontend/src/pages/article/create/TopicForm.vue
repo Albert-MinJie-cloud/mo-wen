@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { FileTextOutlined, EditOutlined, PictureOutlined, RocketOutlined } from "@ant-design/icons-vue";
+import { FileTextOutlined, EditOutlined, PictureOutlined, RocketOutlined, LockOutlined } from "@ant-design/icons-vue";
 import { ARTICLE_STYLE_OPTIONS, IMAGE_METHOD_OPTIONS } from "@/utils/article";
+import { message } from "@/message";
 import Button from "@/components/Button.vue";
 
 const props = withDefaults(
@@ -10,12 +11,14 @@ const props = withDefaults(
     style?: string | null;
     enabledImageMethods?: string[];
     canSubmit?: boolean;
+    isVip?: boolean;
   }>(),
   {
     topic: "",
     style: null,
     enabledImageMethods: () => [],
     canSubmit: false,
+    isVip: false,
   },
 );
 
@@ -33,6 +36,14 @@ const topicModel = computed({
 
 function onToggleStyle(optValue: string) {
   emit("update:style", props.style === optValue ? null : optValue);
+}
+
+function onToggleMethod(method: string, vipOnly: boolean) {
+  if (vipOnly && !props.isVip) {
+    message.warning("此配图方式仅限 VIP 会员使用");
+    return;
+  }
+  emit("toggleImageMethod", method);
 }
 </script>
 
@@ -82,11 +93,19 @@ function onToggleStyle(optValue: string) {
         <span
           v-for="opt in IMAGE_METHOD_OPTIONS"
           :key="opt.value"
-          :class="['method-chip', { active: enabledImageMethods.includes(opt.value) }]"
-          :title="opt.desc"
-          @click="emit('toggleImageMethod', opt.value)"
+          :class="[
+            'method-chip',
+            {
+              active: enabledImageMethods.includes(opt.value),
+              'vip-only': opt.vipOnly && !isVip,
+            },
+          ]"
+          :title="opt.vipOnly && !isVip ? `${opt.desc}（VIP专属）` : opt.desc"
+          @click="onToggleMethod(opt.value, opt.vipOnly)"
         >
+          <LockOutlined v-if="opt.vipOnly && !isVip" class="vip-lock" />
           {{ opt.label }}
+          <span v-if="opt.vipOnly && !isVip" class="vip-tag">VIP</span>
         </span>
       </div>
     </div>
@@ -189,6 +208,31 @@ function onToggleStyle(optValue: string) {
   background: rgba(59, 130, 246, 0.12);
   border-color: var(--color-primary);
   color: var(--color-primary);
+}
+
+.method-chip.vip-only {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.method-chip.vip-only:hover {
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.vip-lock {
+  font-size: 11px;
+  margin-right: 2px;
+}
+
+.vip-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-accent-purple);
+  margin-left: 4px;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: rgba(168, 85, 247, 0.12);
 }
 
 .form-actions {
