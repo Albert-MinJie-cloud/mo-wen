@@ -13,8 +13,9 @@ from app.schemas import (
     ArticleConfirmOutlineRequest,
     ArticleAiModifyOutlineRequest,
     LoginUserVO,
+    AgentExecutionStatsVO,
 )
-from app.services import ArticleAsyncService, ArticleService
+from app.services import ArticleAsyncService, ArticleService, AgentLogService
 from app.deps import require_login
 from app.managers.sse_manager import sse_emitter_manager
 from app.exceptions import ErrorCode, throw_if
@@ -169,3 +170,19 @@ async def ai_modify_outline(
     return BaseResponse.success(
         data=[section.model_dump() for section in modified_outline]
     )
+
+
+@router.get(
+    "/execution-logs/{task_id}", response_model=BaseResponse[AgentExecutionStatsVO]
+)
+async def get_execution_logs(
+    task_id: str,
+    db: Database = Depends(get_db),
+):
+    """获取任务执行日志"""
+    throw_if(
+        not task_id or not task_id.strip(), ErrorCode.PARAMS_ERROR, "任务ID不能为空"
+    )
+    service = AgentLogService(db)
+    stats = await service.get_execution_stats(task_id)
+    return BaseResponse.success(data=stats)

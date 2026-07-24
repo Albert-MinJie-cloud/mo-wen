@@ -30,6 +30,9 @@ from app.schemas.payment import (
 )
 from app.schemas.image import ImageRequest, ImageData
 
+from app.schemas.statistics import AgentLogVO, AgentExecutionStatsVO
+
+
 __all__ = [
     "BaseResponse",
     "PageRequest",
@@ -59,4 +62,6 @@ __all__ = [
     "RefundRequest",
     "ImageRequest",
     "ImageData",
+    "AgentLogVO",
+    "AgentExecutionStatsVO",
 ]

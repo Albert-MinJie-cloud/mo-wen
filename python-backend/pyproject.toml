@@ -1,6 +1,6 @@
 [project]
 name = "mo-wen"
-version = "0.0.1"
+version = "0.0.2"
 description = "墨文：AI 爆款文章创作器 - Python 后端"
 readme = "README.md"
 requires-python = ">=3.10"
