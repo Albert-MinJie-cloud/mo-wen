@@ -3,7 +3,7 @@
 from typing import Optional, List, Any
 from pydantic import BaseModel, Field
 
-from app.schemas.common import PageRequest
+from app.schemas import PageRequest
 
 
 class ArticleCreateRequest(BaseModel):

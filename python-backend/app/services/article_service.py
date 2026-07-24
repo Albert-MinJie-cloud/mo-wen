@@ -74,7 +74,8 @@ class ArticleService:
         # 非 VIP：过滤掉 VIP 专属方式
         if enabled_image_methods:
             filtered = [
-                m for m in enabled_image_methods
+                m
+                for m in enabled_image_methods
                 if m not in self._vip_only_image_methods
             ]
             if filtered:
@@ -92,7 +93,9 @@ class ArticleService:
     ) -> str:
         """创建文章任务"""
         self._validate_image_methods(enabled_image_methods, login_user)
-        final_image_methods = self._process_image_methods(enabled_image_methods, login_user)
+        final_image_methods = self._process_image_methods(
+            enabled_image_methods, login_user
+        )
 
         task_id = str(uuid.uuid4())
         now = datetime.now()
@@ -111,7 +114,9 @@ class ArticleService:
                 "userId": login_user.id,
                 "topic": topic,
                 "style": style,
-                "enabledImageMethods": json.dumps(final_image_methods, ensure_ascii=False)
+                "enabledImageMethods": json.dumps(
+                    final_image_methods, ensure_ascii=False
+                )
                 if final_image_methods
                 else None,
                 "status": ArticleStatusEnum.PENDING.value,
@@ -465,7 +470,9 @@ class ArticleService:
             },
         )
 
-    def _require_vip(self, login_user: LoginUserVO, message: str = "此功能仅限 VIP 会员使用"):
+    def _require_vip(
+        self, login_user: LoginUserVO, message: str = "此功能仅限 VIP 会员使用"
+    ):
         """要求 VIP 权限，否则抛出异常"""
         throw_if(
             not self._is_vip_or_admin(login_user),
@@ -498,6 +505,7 @@ class ArticleService:
         ]
         agent_service = ArticleAgentService()
         modified_outline = await agent_service.ai_modify_outline(
+            task_id=task_id,
             main_title=article["mainTitle"],
             sub_title=article["subTitle"],
             current_outline=current_outline,
