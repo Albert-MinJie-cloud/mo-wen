@@ -53,7 +53,7 @@ export async function getUserByIdApiUserGetGet(
   });
 }
 
-/** Get Login User 获取当前登录用户 GET /api/user/get/login */
+/** Get Login User 获取当前登录用户（从数据库重新读取，确保 VIP 状态最新） GET /api/user/get/login */
 export async function getLoginUserApiUserGetLoginGet(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.getLoginUserApiUserGetLoginGetParams,

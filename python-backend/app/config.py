@@ -34,7 +34,8 @@ class Settings(BaseSettings):
 
     # AI 配置
     dashscope_api_key: str
-    dashscope_model: str = "qwen-plus"
+    dashscope_model: str
+    dashscope_base_url: str
 
     # Pexels 图片搜索
     pexels_api_key: str

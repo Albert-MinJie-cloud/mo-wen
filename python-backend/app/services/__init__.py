@@ -13,6 +13,7 @@ from app.services.iconify_service import IconifyService
 from app.services.emoji_pack_service import EmojiPackService
 from app.services.svg_diagram_service import SvgDiagramService
 from app.services.agent_log_service import AgentLogService
+from app.services.statistics_service import StatisticsService
 
 __all__ = [
     "UserService",
@@ -32,4 +33,5 @@ __all__ = [
     "EmojiPackService",
     "SvgDiagramService",
     "AgentLogService",
+    "StatisticsService",
 ]

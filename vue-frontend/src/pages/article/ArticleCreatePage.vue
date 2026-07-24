@@ -98,7 +98,11 @@ const isGeneratingImages = computed(() => {
 const loadingMessage = computed(() => {
   if (currentPhase.value === 1) return "正在分析选题，生成标题方案...";
   if (currentPhase.value === 2) return "正在分析文章结构，生成大纲...";
-  return "正在撰写正文内容，匹配配图...";
+  const key = currentAgent.value?.key;
+  if (key === "AGENT4") return "正在分析配图需求...";
+  if (key === "AGENT5") return "正在生成配图...";
+  if (key === "MERGE") return "正在进行图文合成...";
+  return "正在撰写正文内容...";
 });
 
 // 实时字数
@@ -190,10 +194,12 @@ function handleSSEMessage(data: SSEMessage) {
       break;
     case "AGENT3_COMPLETE":
       updateAgentStep("AGENT3", "done");
+      updateAgentStep("AGENT4", "processing");
       break;
 
     case "AGENT4_COMPLETE":
       updateAgentStep("AGENT4", "done");
+      updateAgentStep("AGENT5", "processing");
       break;
 
     case "IMAGE_COMPLETE":

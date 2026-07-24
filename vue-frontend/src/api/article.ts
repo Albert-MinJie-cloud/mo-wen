@@ -106,6 +106,23 @@ export async function deleteArticleApiArticleDeletePost(
   });
 }
 
+/** Get Execution Logs 获取任务执行日志 GET /api/article/execution-logs/${param0} */
+export async function getExecutionLogsApiArticleExecutionLogsTaskIdGet(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getExecutionLogsApiArticleExecutionLogsTaskIdGetParams,
+  options?: { [key: string]: any }
+) {
+  const { task_id: param0, ...queryParams } = params;
+  return request<API.BaseResponseAgentExecutionStatsVO_>(
+    `/api/article/execution-logs/${param0}`,
+    {
+      method: "GET",
+      params: { ...queryParams },
+      ...(options || {}),
+    }
+  );
+}
+
 /** List Article 分页查询文章列表 POST /api/article/list */
 export async function listArticleApiArticleListPost(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)

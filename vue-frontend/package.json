@@ -1,6 +1,6 @@
 {
   "name": "vue-frontend",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -15,10 +15,12 @@
     "ant-design-vue": "^4.2.6",
     "axios": "^1.18.1",
     "dayjs": "^1.11.13",
+    "echarts": "^6.1.0",
     "highlight.js": "^11.11.1",
     "marked": "^18.0.6",
     "pinia": "^3.0.4",
     "vue": "^3.5.38",
+    "vue-echarts": "^8.0.1",
     "vue-router": "^5.1.0"
   },
   "devDependencies": {

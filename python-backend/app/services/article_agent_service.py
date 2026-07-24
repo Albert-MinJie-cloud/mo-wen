@@ -1,5 +1,6 @@
 import json
 import logging
+from contextlib import asynccontextmanager, contextmanager
 
 from openai import AsyncOpenAI
 from typing import Callable, List, Optional
@@ -8,7 +9,6 @@ from datetime import datetime
 
 from app.config import settings
 from app.database import database
-from app.models.enums import SseMessageTypeEnum
 from app.schemas.article import (
     ArticleState,
     TitleOption,
@@ -20,13 +20,11 @@ from app.schemas.article import (
     Agent4Result,
 )
 from app.schemas import ImageRequest
-from app.models.enums import ImageMethodEnum, ArticleStyleEnum
+from app.models.enums import ImageMethodEnum, ArticleStyleEnum, SseMessageTypeEnum
 from app.constants.prompt import PromptConstant
 from app.services.image_service_strategy import ImageServiceStrategy
 from app.services.agent_log_service import AgentLogService
 
-
-from contextlib import asynccontextmanager, contextmanager
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +36,7 @@ class ArticleAgentService:
         # 初始化 OpenAI 客户端（DashScope 兼容）
         self.client = AsyncOpenAI(
             api_key=settings.dashscope_api_key,
-            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            base_url=settings.dashscope_base_url,
         )
         self.model = settings.dashscope_model
 

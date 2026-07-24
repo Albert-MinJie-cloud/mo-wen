@@ -3,6 +3,50 @@ declare namespace API {
     SESSION?: string | null;
   };
 
+  type AgentExecutionStatsVO = {
+    /** Taskid */
+    taskId: string;
+    /** Totaldurationms */
+    totalDurationMs: number;
+    /** Agentcount */
+    agentCount: number;
+    /** Agentdurations */
+    agentDurations?: Record<string, any>;
+    /** Overallstatus */
+    overallStatus: string;
+    /** Logs */
+    logs?: AgentLogVO[];
+  };
+
+  type AgentLogVO = {
+    /** Id */
+    id: number;
+    /** Taskid */
+    taskId: string;
+    /** Agentname */
+    agentName: string;
+    /** Starttime */
+    startTime: string;
+    /** Endtime */
+    endTime?: string | null;
+    /** Durationms */
+    durationMs?: number | null;
+    /** Status */
+    status: string;
+    /** Errormessage */
+    errorMessage?: string | null;
+    /** Prompt */
+    prompt?: string | null;
+    /** Inputdata */
+    inputData?: string | null;
+    /** Outputdata */
+    outputData?: string | null;
+    /** Createtime */
+    createTime: string;
+    /** Updatetime */
+    updateTime: string;
+  };
+
   type aiModifyOutlineApiArticleAiModifyOutlinePostParams = {
     SESSION?: string | null;
   };
@@ -103,6 +147,15 @@ declare namespace API {
     completedTime?: string | null;
     /** Updatetime */
     updateTime: string;
+  };
+
+  type BaseResponseAgentExecutionStatsVO_ = {
+    /** Code 状态码 */
+    code?: number;
+    /** 响应数据 */
+    data?: AgentExecutionStatsVO | null;
+    /** Message 响应消息 */
+    message?: string;
   };
 
   type BaseResponseArticleVO_ = {
@@ -232,6 +285,10 @@ declare namespace API {
   type getArticleApiArticleTaskIdGetParams = {
     task_id: string;
     SESSION?: string | null;
+  };
+
+  type getExecutionLogsApiArticleExecutionLogsTaskIdGetParams = {
+    task_id: string;
   };
 
   type getLoginUserApiUserGetLoginGetParams = {

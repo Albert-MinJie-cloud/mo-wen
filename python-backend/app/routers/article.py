@@ -15,7 +15,8 @@ from app.schemas import (
     LoginUserVO,
     AgentExecutionStatsVO,
 )
-from app.services import ArticleAsyncService, ArticleService, AgentLogService
+from app.services import ArticleService, AgentLogService
+from app.services.article_async_service import article_async_service
 from app.deps import require_login
 from app.managers.sse_manager import sse_emitter_manager
 from app.exceptions import ErrorCode, throw_if
@@ -45,7 +46,7 @@ async def create_article(
 
     # 异步执行阶段1：生成标题方案
     asyncio.create_task(
-        ArticleAsyncService.execute_phase1(
+        article_async_service.execute_phase1(
             task_id,
             request.topic,
             request.style,
@@ -133,7 +134,7 @@ async def confirm_title(
         user_description=request.user_description,
         login_user=current_user,
     )
-    asyncio.create_task(ArticleAsyncService.execute_phase2(request.task_id))
+    asyncio.create_task(article_async_service.execute_phase2(request.task_id))
     return BaseResponse.success(data=None)
 
 
@@ -150,7 +151,7 @@ async def confirm_outline(
         outline=request.outline,
         login_user=current_user,
     )
-    asyncio.create_task(ArticleAsyncService.execute_phase3(request.task_id))
+    asyncio.create_task(article_async_service.execute_phase3(request.task_id))
     return BaseResponse.success(data=None)
 
 
