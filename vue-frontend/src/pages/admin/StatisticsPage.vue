@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { message } from "@/message";
+import { useTheme } from "@/composables/useTheme";
 import request from "@/request";
 import VChart from "vue-echarts";
 import * as echarts from "echarts";
@@ -35,10 +36,38 @@ const AGENT_LABELS: Record<string, string> = {
   ai_modify_outline: "AI 修改大纲",
 };
 
+const { currentTheme } = useTheme();
+
 const loading = ref(false);
 const timeRange = ref("30d");
 const granularity = ref("daily");
 const stats = ref<DashboardStats | null>(null);
+
+// ---- 图表颜色 — 跟随主题切换 ----
+const chartTextColor = computed(() =>
+  currentTheme.value === "dark" ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.55)"
+);
+const chartBorderColor = computed(() =>
+  currentTheme.value === "dark" ? "rgba(255,255,255,0.08)" : "#e4e4e7"
+);
+const chartTooltipBg = computed(() =>
+  currentTheme.value === "dark" ? "rgba(15,23,42,0.96)" : "rgba(255,255,255,0.96)"
+);
+const chartTooltipTextColor = computed(() =>
+  currentTheme.value === "dark" ? "#fff" : "#18181b"
+);
+const chartTooltipBorderColor = computed(() =>
+  currentTheme.value === "dark" ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)"
+);
+const chartPieGapColor = computed(() =>
+  currentTheme.value === "dark" ? "#0f172a" : "#ffffff"
+);
+const chartOtherColor = computed(() =>
+  currentTheme.value === "dark" ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)"
+);
+const chartLabelColor = computed(() =>
+  currentTheme.value === "dark" ? "rgba(255,255,255,0.65)" : "rgba(0,0,0,0.55)"
+);
 
 interface DashboardStats {
   creationTrend: { items: { date: string; count: number }[] };
@@ -95,11 +124,7 @@ function formatMs(ms: number): string {
   return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
 }
 
-const CHART_TEXT_COLOR = "rgba(255,255,255,0.55)";
-const CHART_BORDER_COLOR = "rgba(255,255,255,0.08)";
-const CHART_TOOLTIP_BG = "rgba(15,23,42,0.95)";
-
-// 深色主题明亮色板
+// 明亮色板（深浅主题通用）
 const C_BLUE = "#60a5fa";
 const C_GREEN = "#4ade80";
 const C_YELLOW = "#fbbf24";
@@ -115,22 +140,22 @@ const creationTrendOption = computed(() => {
   return {
     tooltip: {
       trigger: "axis",
-      backgroundColor: CHART_TOOLTIP_BG,
-      borderColor: "rgba(255,255,255,0.1)",
-      textStyle: { color: "#fff", fontSize: 12 },
+      backgroundColor: chartTooltipBg.value,
+      borderColor: chartTooltipBorderColor.value,
+      textStyle: { color: chartTooltipTextColor.value, fontSize: 12 },
     },
     grid: { left: 50, right: 20, top: 20, bottom: 30 },
     xAxis: {
       type: "category",
       data: items.map((i) => i.date),
-      axisLabel: { rotate: items.length > 10 ? 45 : 0, fontSize: 11, color: CHART_TEXT_COLOR },
-      axisLine: { lineStyle: { color: CHART_BORDER_COLOR } },
-      axisTick: { lineStyle: { color: CHART_BORDER_COLOR } },
+      axisLabel: { rotate: items.length > 10 ? 45 : 0, fontSize: 11, color: chartTextColor.value },
+      axisLine: { lineStyle: { color: chartBorderColor.value } },
+      axisTick: { lineStyle: { color: chartBorderColor.value } },
     },
     yAxis: {
       type: "value", minInterval: 1,
-      axisLabel: { color: CHART_TEXT_COLOR },
-      splitLine: { lineStyle: { color: CHART_BORDER_COLOR } },
+      axisLabel: { color: chartTextColor.value },
+      splitLine: { lineStyle: { color: chartBorderColor.value } },
     },
     series: [
       {
@@ -161,6 +186,8 @@ const avgTotalTime = computed(() => {
 });
 
 // ======== 智能体性能 横向柱状图 ========
+const PIE_COLORS = [C_BLUE, C_GREEN, C_YELLOW, C_PURPLE, C_CYAN, C_ORANGE, C_GOLD, C_RED, "#818cf8", "#34d399"];
+
 const agentPerformanceOption = computed(() => {
   const items = stats.value?.agentPerformance?.items || [];
   const names = items.map((i) => AGENT_LABELS[i.agentName] || i.agentName);
@@ -168,9 +195,9 @@ const agentPerformanceOption = computed(() => {
     tooltip: {
       trigger: "axis",
       axisPointer: { type: "shadow" },
-      backgroundColor: CHART_TOOLTIP_BG,
-      borderColor: "rgba(255,255,255,0.1)",
-      textStyle: { color: "#fff", fontSize: 12 },
+      backgroundColor: chartTooltipBg.value,
+      borderColor: chartTooltipBorderColor.value,
+      textStyle: { color: chartTooltipTextColor.value, fontSize: 12 },
       formatter: (params: any) => {
         const p = params[0];
         if (!p || p.dataIndex == null) return "";
@@ -187,15 +214,15 @@ const agentPerformanceOption = computed(() => {
     xAxis: {
       type: "value",
       name: "平均耗时",
-      nameTextStyle: { fontSize: 11, color: CHART_TEXT_COLOR },
-      axisLabel: { formatter: (v: number) => formatMs(v), color: CHART_TEXT_COLOR },
-      splitLine: { lineStyle: { color: CHART_BORDER_COLOR } },
+      nameTextStyle: { fontSize: 11, color: chartTextColor.value },
+      axisLabel: { formatter: (v: number) => formatMs(v), color: chartTextColor.value },
+      splitLine: { lineStyle: { color: chartBorderColor.value } },
     },
     yAxis: {
       type: "category",
       data: names,
-      axisLabel: { fontSize: 11, color: CHART_TEXT_COLOR },
-      axisLine: { lineStyle: { color: CHART_BORDER_COLOR } },
+      axisLabel: { fontSize: 11, color: chartTextColor.value },
+      axisLine: { lineStyle: { color: chartBorderColor.value } },
     },
     series: [
       {
@@ -213,7 +240,7 @@ const agentPerformanceOption = computed(() => {
           show: true,
           position: "right",
           fontSize: 11,
-          color: "rgba(255,255,255,0.65)",
+          color: chartLabelColor.value,
           formatter: (p: any) => formatMs(p.value),
         },
       },
@@ -228,16 +255,16 @@ const userAnalysisOption = computed(() => {
   return {
     tooltip: {
       trigger: "item",
-      backgroundColor: CHART_TOOLTIP_BG,
-      borderColor: "rgba(255,255,255,0.1)",
-      textStyle: { color: "#fff", fontSize: 12 },
+      backgroundColor: chartTooltipBg.value,
+      borderColor: chartTooltipBorderColor.value,
+      textStyle: { color: chartTooltipTextColor.value, fontSize: 12 },
       formatter: "{b}: {c} ({d}%)",
     },
     legend: {
       orient: "vertical",
       right: 10,
       top: "center",
-      textStyle: { color: CHART_TEXT_COLOR, fontSize: 12 },
+      textStyle: { color: chartTextColor.value, fontSize: 12 },
     },
     series: [
       {
@@ -246,7 +273,7 @@ const userAnalysisOption = computed(() => {
         radius: ["50%", "75%"],
         center: ["45%", "50%"],
         avoidLabelOverlap: false,
-        itemStyle: { borderRadius: 4, borderColor: "#0f172a", borderWidth: 3 },
+        itemStyle: { borderRadius: 4, borderColor: chartPieGapColor.value, borderWidth: 3 },
         label: { show: false },
         emphasis: {
           label: { show: true, fontSize: 14, fontWeight: "bold" },
@@ -261,8 +288,6 @@ const userAnalysisOption = computed(() => {
 });
 
 // ======== 配额使用 饼状图 ========
-const PIE_COLORS = [C_BLUE, C_GREEN, C_YELLOW, C_PURPLE, C_CYAN, C_ORANGE, C_GOLD, C_RED, "#818cf8", "#34d399"];
-
 const quotaUsageOption = computed(() => {
   const items = stats.value?.quotaUsage?.items || [];
   const top5 = items.slice(0, 5);
@@ -273,21 +298,21 @@ const quotaUsageOption = computed(() => {
     itemStyle: { color: PIE_COLORS[idx % PIE_COLORS.length] },
   }));
   if (othersCount > 0) {
-    data.push({ value: othersCount, name: "其他用户", itemStyle: { color: "rgba(255,255,255,0.2)" } });
+    data.push({ value: othersCount, name: "其他用户", itemStyle: { color: chartOtherColor.value } });
   }
   return {
     tooltip: {
       trigger: "item",
-      backgroundColor: CHART_TOOLTIP_BG,
-      borderColor: "rgba(255,255,255,0.1)",
-      textStyle: { color: "#fff", fontSize: 12 },
+      backgroundColor: chartTooltipBg.value,
+      borderColor: chartTooltipBorderColor.value,
+      textStyle: { color: chartTooltipTextColor.value, fontSize: 12 },
       formatter: "{b}: {c} 次 ({d}%)",
     },
     legend: {
       orient: "vertical",
       right: 10,
       top: "center",
-      textStyle: { color: CHART_TEXT_COLOR, fontSize: 11 },
+      textStyle: { color: chartTextColor.value, fontSize: 11 },
     },
     series: [
       {
@@ -296,7 +321,7 @@ const quotaUsageOption = computed(() => {
         radius: ["45%", "72%"],
         center: ["42%", "50%"],
         avoidLabelOverlap: false,
-        itemStyle: { borderRadius: 3, borderColor: "#0f172a", borderWidth: 2 },
+        itemStyle: { borderRadius: 3, borderColor: chartPieGapColor.value, borderWidth: 2 },
         label: { show: false },
         emphasis: {
           label: { show: true, fontSize: 13, fontWeight: "bold" },
@@ -421,15 +446,15 @@ onMounted(() => fetchStats());
 
 <style scoped lang="scss">
 #statisticsPage {
-  background: #0f172a;
+  background: var(--color-background);
   min-height: 100vh;
 }
 
 .page-header {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  background: var(--gradient-hero);
   padding: 32px 20px;
   margin-bottom: 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .header-container {
@@ -441,13 +466,13 @@ onMounted(() => fetchStats());
   .page-title {
     font-size: 24px;
     font-weight: 700;
-    color: #fff;
+    color: var(--color-text);
     margin: 0 0 6px;
     letter-spacing: -0.3px;
   }
   .page-subtitle {
     font-size: 14px;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--color-text-secondary);
     margin: 0;
   }
 }
@@ -460,13 +485,13 @@ onMounted(() => fetchStats());
 
 .content-card {
   border-radius: var(--radius-lg);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--color-border);
   box-shadow: none;
-  background: #1e293b;
-}
+  background: var(--color-background-secondary);
 
-.content-card :deep(.ant-card-body) {
-  background: #1e293b;
+  :deep(.ant-card-body) {
+    background: var(--color-background-secondary);
+  }
 }
 
 .filter-bar {
@@ -475,32 +500,32 @@ onMounted(() => fetchStats());
   gap: 16px;
 
   :deep(.ant-radio-button-wrapper) {
-    color: rgba(255, 255, 255, 0.55);
-    background: rgba(255, 255, 255, 0.04);
-    border-color: rgba(255, 255, 255, 0.1);
-    &:hover { color: rgba(255, 255, 255, 0.85); }
+    color: var(--color-text-muted);
+    background: var(--color-fill-tertiary);
+    border-color: var(--color-border);
+    &:hover { color: var(--color-text); }
     &:not(:first-child)::before {
-      background-color: rgba(255, 255, 255, 0.1);
+      background-color: var(--color-border);
     }
   }
   :deep(.ant-radio-button-wrapper-checked) {
     color: #fff;
-    background: #3B82F6;
-    border-color: #3B82F6;
+    background: var(--color-primary);
+    border-color: var(--color-primary);
     box-shadow: none;
     &:hover { color: #fff; }
   }
 
   :deep(.ant-select) {
     .ant-select-selector {
-      background: rgba(255, 255, 255, 0.04);
-      border-color: rgba(255, 255, 255, 0.1);
-      color: rgba(255, 255, 255, 0.85);
+      background: var(--color-fill-tertiary);
+      border-color: var(--color-border);
+      color: var(--color-text);
     }
-    .ant-select-arrow { color: rgba(255, 255, 255, 0.45); }
+    .ant-select-arrow { color: var(--color-text-muted); }
   }
   :deep(.ant-select-focused .ant-select-selector) {
-    border-color: #3B82F6 !important;
+    border-color: var(--color-primary) !important;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
   }
 }
@@ -513,30 +538,25 @@ onMounted(() => fetchStats());
 
 .chart-card {
   border-radius: var(--radius-md);
-  background: #0f172a;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
 
-.chart-card :deep(.ant-card-head) {
-  background: #0f172a;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
+  :deep(.ant-card-head) {
+    background: var(--color-background);
+    border-bottom: 1px solid var(--color-border);
+  }
 
-.chart-card :deep(.ant-card-head-title) {
-  color: rgba(255, 255, 255, 0.85);
-}
+  :deep(.ant-card-head-title) {
+    color: var(--color-text);
+  }
 
-.chart-card :deep(.ant-card-body) {
-  background: #0f172a;
+  :deep(.ant-card-body) {
+    background: var(--color-background);
+  }
 }
 
 .chart-box {
   height: 280px;
-}
-
-.chart-box-sm {
-  height: 220px;
-  margin-top: 8px;
 }
 
 .empty-chart {
@@ -544,7 +564,7 @@ onMounted(() => fetchStats());
   align-items: center;
   justify-content: center;
   height: 180px;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--color-text-muted);
   font-size: 14px;
 }
 
@@ -555,13 +575,13 @@ onMounted(() => fetchStats());
 
 .stat-tag {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--color-text-muted);
+  background: var(--color-fill-secondary);
+  border: 1px solid var(--color-border-light);
   border-radius: var(--radius-full);
   padding: 3px 12px;
   strong {
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--color-text);
     font-weight: 600;
   }
 }
@@ -576,7 +596,7 @@ onMounted(() => fetchStats());
 .summary-item {
   text-align: center;
   padding: 16px 12px;
-  background: #1e293b;
+  background: var(--color-background-secondary);
   border-radius: var(--radius-md);
 }
 
@@ -584,29 +604,29 @@ onMounted(() => fetchStats());
   display: block;
   font-size: 22px;
   font-weight: 700;
-  color: #3B82F6;
+  color: var(--color-primary);
 }
 
 .summary-label {
   display: block;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--color-text-muted);
   margin-top: 2px;
 }
 
 .quota-total {
   margin-bottom: 12px;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--color-text);
   text-align: center;
   strong {
-    color: #60a5fa;
+    color: var(--color-primary-light);
     font-size: 18px;
   }
 }
 
 :deep(.ant-divider) {
-  border-color: rgba(255, 255, 255, 0.06);
+  border-color: var(--color-border);
 }
 
 @media (max-width: 768px) {
@@ -622,18 +642,18 @@ onMounted(() => fetchStats());
 <style lang="scss">
 // Select 下拉面板（渲染在 body，无法用 scoped）
 .statistics-dropdown {
-  background: #1e293b;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  background: var(--color-background-secondary);
+  box-shadow: var(--shadow-lg);
 
   .ant-select-item {
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--color-text-secondary);
   }
   .ant-select-item-option-active {
-    background: rgba(59, 130, 246, 0.12);
+    background: rgba(59, 130, 246, 0.08);
   }
   .ant-select-item-option-selected {
-    background: rgba(59, 130, 246, 0.18);
-    color: #3B82F6;
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--color-primary);
     font-weight: 600;
   }
 }

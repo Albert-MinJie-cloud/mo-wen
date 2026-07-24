@@ -2,14 +2,14 @@
   <a-layout-footer class="footer">
     <div class="footer-content">
       <p class="copyright">
-        &copy; 2026 minjie. All rights reserved.
+        &copy; 2026 minjie. All rights reserved.<span class="version">V{{ version }}</span>
       </p>
     </div>
   </a-layout-footer>
 </template>
 
 <script setup lang="ts">
-// 无需额外的响应式数据
+import { version } from "../../package.json";
 </script>
 
 <style scoped>
@@ -30,6 +30,12 @@
   margin: 0;
   color: var(--color-text-muted);
   font-size: 13px;
+
+  .version {
+    color: var(--color-primary-light);
+    margin-left: 8px;
+    font-weight: 500;
+  }
 }
 
 

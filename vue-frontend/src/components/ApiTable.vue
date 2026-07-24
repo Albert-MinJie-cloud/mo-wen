@@ -66,7 +66,7 @@ defineProps<{
   }
 
   code {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--color-fill-secondary);
     padding: 2px 8px;
     border-radius: var(--radius-sm);
     font-family: "SF Mono", "Fira Code", monospace;

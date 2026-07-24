@@ -792,7 +792,7 @@ onMounted(() => {
 }
 
 .records-table-wrap :deep(.ant-table-thead > tr > th) {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--color-fill-tertiary);
   color: var(--color-text-secondary);
   font-size: 13px;
   border-bottom: 1px solid var(--color-border);
@@ -804,7 +804,7 @@ onMounted(() => {
 }
 
 .records-table-wrap :deep(.ant-table-tbody > tr:hover > td) {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--color-fill-tertiary);
 }
 
 .records-table-wrap :deep(.ant-empty-description) {

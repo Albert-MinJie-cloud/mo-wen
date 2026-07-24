@@ -40,7 +40,7 @@ withDefaults(
   height: 44px;
   border-radius: var(--radius-md);
   border-color: var(--color-border);
-  background: rgba(255, 255, 255, 0.04) !important;
+  background: var(--color-fill-tertiary) !important;
   color: var(--color-text) !important;
   font-size: 14px;
   transition: all var(--transition-fast);
@@ -51,14 +51,14 @@ withDefaults(
   }
 
   &:hover {
-    border-color: rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: var(--color-fill);
+    background: var(--color-fill-secondary) !important;
   }
 
   &:focus,
   &:focus-within {
     border-color: var(--color-primary);
-    background: rgba(255, 255, 255, 0.06) !important;
+    background: var(--color-fill-secondary) !important;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
   }
 

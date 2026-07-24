@@ -574,8 +574,9 @@ function viewInList() {
 <style scoped lang="scss">
 #articleCreatePage {
   width: 100%;
-  min-height: calc(100vh - 64px - 48px);
+  height: 100%;
   background: var(--color-background);
+  overflow: hidden;
 }
 
 /* 三栏布局 */
@@ -583,7 +584,7 @@ function viewInList() {
   display: grid;
   grid-template-columns: 260px 1fr 280px;
   gap: 0;
-  height: calc(100vh - 64px - 48px);
+  height: 100%;
   overflow: hidden;
 }
 

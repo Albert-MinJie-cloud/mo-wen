@@ -112,7 +112,7 @@ const copyCode = async () => {
   transition: all var(--transition-fast);
 
   &:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--color-fill-secondary);
     color: var(--color-text);
   }
 
@@ -127,7 +127,7 @@ const copyCode = async () => {
   pre {
     margin: 0;
     padding: 16px;
-    background: #0d0d0d;
+    background: var(--color-background-dark);
     overflow-x: auto;
   }
 

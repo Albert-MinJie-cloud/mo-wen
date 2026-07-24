@@ -81,33 +81,33 @@ withDefaults(
   border-radius: 50px;
 }
 
-/* Variant: primary - 白底黑字 */
+/* Variant: primary - 自适应主题 */
 .btn--primary {
-  background: #fff;
-  color: #000;
+  background: var(--color-text);
+  color: var(--color-background-dark);
 
   &:hover:not(:disabled) {
-    background: #e5e5e5;
+    background: var(--btn-primary-hover-bg);
   }
 }
 
-/* Variant: secondary - 透明底白字 */
+/* Variant: secondary - 自适应主题 */
 .btn--secondary {
   background: transparent;
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--color-text);
+  border: 1px solid var(--color-fill);
 
   &:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.3);
+    background: var(--btn-secondary-hover-bg);
+    border-color: var(--btn-secondary-hover-border);
   }
 }
 
 /* Variant: gradient - 渐变蓝底白字 */
 .btn--gradient {
-  background: linear-gradient(135deg, #22d3ee, #3b82f6);
+  background: var(--gradient-primary);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.2);
+  box-shadow: var(--shadow-blue);
 
   &:hover:not(:disabled) {
     opacity: 0.92;

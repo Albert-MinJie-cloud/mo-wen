@@ -25,6 +25,26 @@
 
       <!-- 右侧：用户操作区域 -->
       <div class="header-right">
+        <!-- 主题切换 -->
+        <button class="theme-toggle" @click="toggleTheme" :title="themeTitle">
+          <!-- 太阳图标：暗色模式下显示，表示切换到浅色 -->
+          <svg v-if="currentTheme === 'dark'" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <!-- 月亮图标：浅色模式下显示，表示切换到深色 -->
+          <svg v-else width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+
         <div v-if="loginUserStore.loginUser.id" class="user-dropdown">
           <!-- VIP 标识 -->
           <RouterLink v-if="!isVip" to="/vip" class="upgrade-vip-btn">
@@ -80,6 +100,7 @@ import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { message } from "@/message";
 import { useLoginUserStore } from "@/stores/loginUser";
+import { useTheme } from "@/composables/useTheme";
 import { logoutApiUserLogoutPost } from "@/api/user";
 import {
   LogoutOutlined,
@@ -95,6 +116,10 @@ import Button from "@/components/Button.vue";
 import Logo from "@/components/Logo.vue";
 
 const loginUserStore = useLoginUserStore();
+const { currentTheme, toggleTheme } = useTheme();
+const themeTitle = computed(() =>
+  currentTheme.value === "dark" ? "切换到浅色模式" : "切换到深色模式"
+);
 const router = useRouter();
 // 当前选中菜单
 const selectedKeys = ref<string[]>(["/"]);
@@ -175,6 +200,7 @@ const doLogout = async () => {
   height: 64px;
   line-height: 64px;
   border-bottom: 1px solid var(--color-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   transition: all var(--transition-normal);
   overflow: hidden;
 }
@@ -249,6 +275,29 @@ const doLogout = async () => {
 
 .nav-icon {
   font-size: 16px;
+}
+
+/* 主题切换 */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 18px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+  color: var(--color-primary);
+  background: var(--color-background-secondary);
+  border-color: var(--color-primary);
 }
 
 /* 用户区域 */

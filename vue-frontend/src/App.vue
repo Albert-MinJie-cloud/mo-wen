@@ -19,7 +19,9 @@ import zhCN from "ant-design-vue/es/locale/zh_CN";
 /* 引入 Google Fonts - Geometric Modern */
 @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Work+Sans:wght@300;400;500;600;700&display=swap");
 
-/* 全局CSS变量 - 暗黑 Cyan-Blue 配色方案 */
+/* 全局CSS变量 - 双主题配色方案（默认暗黑） */
+
+/* ========== 公共变量（深浅主题共用） ========== */
 :root {
   /* 品牌色 */
   --color-primary: #3b82f6;
@@ -35,6 +37,25 @@ import zhCN from "ant-design-vue/es/locale/zh_CN";
   --color-error: #ef4444;
   --color-info: #3b82f6;
 
+  /* 圆角 */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  /* 过渡 */
+  --transition-fast: 150ms ease-out;
+  --transition-normal: 200ms ease-out;
+  --transition-slow: 300ms ease-out;
+
+  /* 渐变（品牌色不变） */
+  --gradient-primary: linear-gradient(135deg, #22d3ee, #3b82f6);
+}
+
+/* ========== 暗黑主题（默认） ========== */
+:root {
   /* Toast 通知主题色 */
   --toast-success-bg: rgba(34, 197, 94, 0.12);
   --toast-success-border: rgba(34, 197, 94, 0.25);
@@ -56,7 +77,7 @@ import zhCN from "ant-design-vue/es/locale/zh_CN";
   --toast-info-text: #60a5fa;
   --toast-info-icon: #3b82f6;
 
-  /* 中性色 - 暗黑主题 */
+  /* 中性色 */
   --color-background: #09090b;
   --color-background-secondary: #0e0e11;
   --color-background-tertiary: #121214;
@@ -67,8 +88,12 @@ import zhCN from "ant-design-vue/es/locale/zh_CN";
   --color-border: rgba(255, 255, 255, 0.1);
   --color-border-light: rgba(255, 255, 255, 0.05);
 
+  /* 填充叠加层 */
+  --color-fill: rgba(255, 255, 255, 0.15);
+  --color-fill-secondary: rgba(255, 255, 255, 0.08);
+  --color-fill-tertiary: rgba(255, 255, 255, 0.04);
+
   /* 渐变 */
-  --gradient-primary: linear-gradient(135deg, #22d3ee, #3b82f6);
   --gradient-hero: linear-gradient(180deg, #09090b, #0a1122);
   --gradient-hero-dark: linear-gradient(180deg, #09090b, #0a1122);
 
@@ -89,23 +114,86 @@ import zhCN from "ant-design-vue/es/locale/zh_CN";
   --shadow-blue: 0 4px 14px rgba(59, 130, 246, 0.2);
   --shadow-cyan: 0 0 20px rgba(6, 182, 212, 0.15);
 
-  /* 圆角 */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-2xl: 24px;
-  --radius-full: 9999px;
-
-  /* 过渡 */
-  --transition-fast: 150ms ease-out;
-  --transition-normal: 200ms ease-out;
-  --transition-slow: 300ms ease-out;
-
   /* 毛玻璃 */
   --glass-bg: rgba(9, 9, 11, 0.8);
   --glass-bg-accent: rgba(6, 182, 212, 0.1);
   --glass-blur: blur(12px);
+
+  /* 按钮 hover 状态 */
+  --btn-primary-hover-bg: #e5e5e5;
+  --btn-secondary-hover-bg: rgba(255, 255, 255, 0.06);
+  --btn-secondary-hover-border: rgba(255, 255, 255, 0.2);
+}
+
+/* ========== 浅色主题 ========== */
+:root[data-theme="light"] {
+  /* Toast 通知主题色 */
+  --toast-success-bg: #f0fdf4;
+  --toast-success-border: #bbf7d0;
+  --toast-success-text: #15803d;
+  --toast-success-icon: #22c55e;
+
+  --toast-error-bg: #fef2f2;
+  --toast-error-border: #fecaca;
+  --toast-error-text: #b91c1c;
+  --toast-error-icon: #ef4444;
+
+  --toast-warning-bg: #fefce8;
+  --toast-warning-border: #fef08a;
+  --toast-warning-text: #a16207;
+  --toast-warning-icon: #eab308;
+
+  --toast-info-bg: #eff6ff;
+  --toast-info-border: #bfdbfe;
+  --toast-info-text: #1d4ed8;
+  --toast-info-icon: #3b82f6;
+
+  /* 中性色 — zinc 色系 */
+  --color-background: #ffffff;
+  --color-background-secondary: #ffffff;
+  --color-background-tertiary: #f4f4f5;
+  --color-background-dark: #ffffff;
+  --color-text: #09090b;
+  --color-text-secondary: #52525b;
+  --color-text-muted: #71717a;
+  --color-border: #d4d4d8;
+  --color-border-light: #e4e4e7;
+
+  /* 填充叠加层 */
+  --color-fill: rgba(0, 0, 0, 0.06);
+  --color-fill-secondary: rgba(0, 0, 0, 0.04);
+  --color-fill-tertiary: rgba(0, 0, 0, 0.02);
+
+  /* 渐变 */
+  --gradient-hero: linear-gradient(180deg, #ffffff 0%, #f0f5ff 100%);
+  --gradient-hero-dark: linear-gradient(180deg, #ffffff 0%, #f0f5ff 100%);
+
+  /* 纯色背景 */
+  --bg-primary: #3b82f6;
+  --bg-primary-hover: #2563eb;
+  --bg-dark: #f4f4f5;
+  --bg-dark-hover: #e4e4e7;
+  --bg-success: #22c55e;
+
+  /* 阴影 — 加重使其可见 */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.07);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-blue: 0 4px 14px rgba(59, 130, 246, 0.2);
+  --shadow-cyan: 0 0 20px rgba(6, 182, 212, 0.12);
+
+  /* 毛玻璃 — 白色半透明 + 边框补偿 */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg-accent: rgba(6, 182, 212, 0.04);
+  --glass-blur: blur(16px);
+
+  /* 按钮 hover 状态 */
+  --btn-primary-hover-bg: #27272a;
+  --btn-secondary-hover-bg: rgba(0, 0, 0, 0.04);
+  --btn-secondary-hover-border: rgba(0, 0, 0, 0.1);
 }
 
 /* 全局样式优化 */

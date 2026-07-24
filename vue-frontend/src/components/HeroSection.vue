@@ -68,7 +68,7 @@ const goToCreate = () => {
   transform: translate(-50%, -50%);
   width: 600px;
   height: 400px;
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(59, 130, 246, 0.12);
   filter: blur(120px);
   border-radius: 50%;
   pointer-events: none;
@@ -86,8 +86,8 @@ const goToCreate = () => {
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
-  background: var(--color-border);
-  border: 1px solid var(--color-border);
+  background: rgba(6, 182, 212, 0.1);
+  border: 1px solid rgba(6, 182, 212, 0.15);
   border-radius: var(--radius-full);
   font-size: 14px;
   font-weight: 500;

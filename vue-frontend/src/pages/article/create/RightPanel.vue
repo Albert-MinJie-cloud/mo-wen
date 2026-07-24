@@ -166,7 +166,7 @@ const hotTopics = [
     </div>
 
     <!-- 热门选题（非创作中显示） -->
-    <div v-if="!isCreating && !isCompleted" class="panel-card">
+    <div v-if="!isCreating && !isCompleted" class="panel-card hot-topics-card">
       <div class="panel-header">
         <BulbOutlined class="panel-header-icon" />
         <span>热门选题</span>
@@ -240,7 +240,7 @@ const hotTopics = [
   letter-spacing: 0.5px;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .panel-header-icon {
@@ -411,26 +411,39 @@ const hotTopics = [
 }
 
 /* 热门选题 */
+.hot-topics-card {
+  background: var(--color-background-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
 .hot-topics {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .hot-topic-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 10px;
+  gap: 10px;
+  padding: 10px 12px;
   border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+  background: var(--color-background);
   cursor: pointer;
   transition: all var(--transition-fast);
-  color: var(--color-text-secondary);
+  color: var(--color-text);
+  font-size: 13px;
 }
 
 .hot-topic-item:hover {
-  background: var(--color-background-tertiary);
-  color: var(--color-text);
+  background: var(--color-background-secondary);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  transform: translateX(2px);
 }
 
 .hot-emoji {
@@ -439,21 +452,19 @@ const hotTopics = [
 }
 
 .hot-text {
-  font-size: 13px;
   line-height: 1.4;
   flex: 1;
 }
 
 .hot-arrow {
-  font-size: 11px;
-  opacity: 0;
-  color: var(--color-primary);
-  transition: all var(--transition-fast);
+  font-size: 12px;
+  color: var(--color-text-muted);
   flex-shrink: 0;
+  transition: all var(--transition-fast);
 }
 
 .hot-topic-item:hover .hot-arrow {
-  opacity: 1;
+  color: var(--color-primary);
 }
 
 /* 创作小贴士 */

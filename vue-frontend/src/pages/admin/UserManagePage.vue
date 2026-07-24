@@ -211,14 +211,13 @@ onMounted(() => {
   padding-bottom: 60px;
 
   .page-header {
-    background: var(--gradient-hero);
-    padding: 32px 20px;
     margin-bottom: 24px;
   }
 
   .header-container {
     max-width: 1200px;
     margin: 0 auto;
+    padding: 32px 20px;
   }
 
   .header-content {
@@ -250,9 +249,11 @@ onMounted(() => {
     border: 1px solid var(--color-border);
     box-shadow: none;
     background: var(--color-background-tertiary);
+    overflow: hidden;
 
     :deep(.ant-card-body) {
       padding: 24px;
+      background: var(--color-background-tertiary);
     }
   }
 
@@ -279,35 +280,118 @@ onMounted(() => {
 
   .search-input {
     width: 180px;
+    background: var(--color-fill-tertiary) !important;
+    border-color: var(--color-border) !important;
+    color: var(--color-text) !important;
     border-radius: var(--radius-md);
+    font-size: 14px;
 
-    &:hover {
-      border-color: var(--color-primary-light);
+    &::placeholder {
+      color: var(--color-text-muted);
     }
 
-    &:focus {
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    &:hover {
+      border-color: var(--color-fill) !important;
+    }
+
+    &:focus,
+    &.ant-input-focused {
+      border-color: var(--color-primary) !important;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+      background: var(--color-fill-tertiary) !important;
     }
   }
 
   .user-table {
+    :deep(table),
+    :deep(.ant-table-wrapper),
+    :deep(.ant-spin-nested-loading),
+    :deep(.ant-spin-container),
+    :deep(.ant-table),
+    :deep(.ant-table-container),
+    :deep(.ant-table-content),
+    :deep(.ant-table-body) {
+      background: transparent;
+      border-collapse: collapse;
+    }
+
     :deep(.ant-table-thead > tr > th) {
       background: var(--color-background-secondary);
       font-weight: 600;
       font-size: 13px;
       color: var(--color-text-secondary);
-      border-bottom: 1px solid var(--color-border);
+      border: none !important;
       padding: 14px 16px;
+
+      &::before {
+        display: none !important;
+      }
+    }
+
+    :deep(.ant-table-cell) {
+      border: none !important;
+      box-shadow: none !important;
     }
 
     :deep(.ant-table-tbody > tr > td) {
       padding: 16px;
-      border-bottom: 1px solid var(--color-border-light);
+      border: none !important;
+      box-shadow: none !important;
+      color: var(--color-text);
+      background: transparent;
+    }
+
+    :deep(.ant-table-tbody > tr) {
+      border: none !important;
+      background: transparent;
     }
 
     :deep(.ant-table-tbody > tr:hover > td) {
-      background: rgba(59, 130, 246, 0.02);
+      background: var(--color-fill-tertiary) !important;
+    }
+
+    // 分页
+    :deep(.ant-pagination-item),
+    :deep(.ant-pagination-prev .ant-pagination-item-link),
+    :deep(.ant-pagination-next .ant-pagination-item-link) {
+      background: var(--color-background);
+      border-color: var(--color-border);
+      border-radius: var(--radius-sm);
+
+      a { color: var(--color-text-secondary); }
+
+      &:hover {
+        border-color: var(--color-primary);
+        a { color: var(--color-primary); }
+      }
+    }
+
+    :deep(.ant-pagination-item-active) {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+
+      a { color: #fff; }
+      &:hover a { color: #fff; }
+    }
+
+    :deep(.ant-pagination-disabled .ant-pagination-item-link) {
+      color: var(--color-text-muted);
+      background: transparent;
+      border-color: var(--color-border-light);
+    }
+
+    :deep(.ant-pagination-options .ant-select-selector) {
+      background: var(--color-background);
+      border-color: var(--color-border);
+      color: var(--color-text);
+    }
+
+    :deep(.ant-pagination-options .ant-select-arrow) {
+      color: var(--color-text-muted);
+    }
+
+    :deep(.ant-pagination-total-text) {
+      color: var(--color-text-muted);
     }
 
     :deep(.ant-table-pagination) {
@@ -338,7 +422,8 @@ onMounted(() => {
     padding: 4px 8px;
 
     &:hover {
-      color: #dc2626;
+      color: var(--color-error);
+      opacity: 0.8;
     }
   }
 }

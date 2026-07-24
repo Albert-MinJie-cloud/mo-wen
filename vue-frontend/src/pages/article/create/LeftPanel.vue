@@ -93,18 +93,17 @@ withDefaults(
 
 <style scoped lang="scss">
 .left-panel {
-  padding: 24px 16px;
+  padding: 20px;
   overflow-y: auto;
-  background: var(--color-background-secondary);
+  background: var(--color-background);
   border-right: 1px solid var(--color-border);
 }
 
 .panel-card {
-  margin-bottom: 20px;
-}
-
-.panel-card:last-child {
-  margin-bottom: 0;
+  background: var(--color-background-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
 }
 
 .panel-header {
@@ -118,7 +117,7 @@ withDefaults(
   letter-spacing: 0.5px;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .panel-header-icon {
@@ -142,7 +141,7 @@ withDefaults(
   width: 2px;
   height: 16px;
   margin-left: 21px;
-  background: var(--color-border);
+  background: var(--color-border-light);
   transition: background var(--transition-normal);
 }
 
@@ -235,7 +234,7 @@ withDefaults(
 .node-title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
   transition: color var(--transition-fast);
 }
 
@@ -257,7 +256,7 @@ withDefaults(
 .pipeline-progress {
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-border-light);
 }
 
 .progress-text {

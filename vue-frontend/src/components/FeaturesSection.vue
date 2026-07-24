@@ -102,7 +102,7 @@ const features = [
 .section-badge {
   display: inline-block;
   padding: 6px 14px;
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(59, 130, 246, 0.08);
   border-radius: var(--radius-full);
   font-size: 13px;
   font-weight: 600;

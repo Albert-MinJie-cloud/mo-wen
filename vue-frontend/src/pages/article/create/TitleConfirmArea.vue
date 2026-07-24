@@ -72,7 +72,7 @@ const userDescriptionModel = computed({
 }
 
 .desc-textarea :deep(textarea):hover {
-  border-color: rgba(255, 255, 255, 0.15) !important;
+  border-color: var(--color-fill) !important;
 }
 
 .desc-textarea :deep(textarea):focus {

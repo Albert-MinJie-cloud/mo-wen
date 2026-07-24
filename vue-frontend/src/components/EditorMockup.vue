@@ -111,21 +111,21 @@ import { RightOutlined, ThunderboltOutlined } from "@ant-design/icons-vue";
 
 .mockup-card {
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: #121214;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--color-border);
+  background: var(--color-background-tertiary);
+  box-shadow: var(--shadow-xl);
   overflow: hidden;
 }
 
 /* Header */
 .mockup-header {
   height: 48px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--color-border-light);
   display: flex;
   align-items: center;
   padding: 0 16px;
   gap: 12px;
-  background: #09090b;
+  background: var(--color-background-dark);
 }
 
 .traffic-lights {
@@ -156,7 +156,7 @@ import { RightOutlined, ThunderboltOutlined } from "@ant-design/icons-vue";
   text-align: center;
   font-size: 12px;
   font-weight: 500;
-  color: #737373;
+  color: var(--color-text-muted);
   margin-right: 44px; // offset to center
 }
 
@@ -169,8 +169,8 @@ import { RightOutlined, ThunderboltOutlined } from "@ant-design/icons-vue";
 /* Sidebar */
 .mockup-sidebar {
   width: 256px;
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
-  background: #0e0e11;
+  border-right: 1px solid var(--color-border-light);
+  background: var(--color-background-secondary);
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -187,7 +187,7 @@ import { RightOutlined, ThunderboltOutlined } from "@ant-design/icons-vue";
 .sidebar-label {
   font-size: 12px;
   font-weight: 600;
-  color: #737373;
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -200,7 +200,7 @@ import { RightOutlined, ThunderboltOutlined } from "@ant-design/icons-vue";
 
 .config-label {
   font-size: 12px;
-  color: #a3a3a3;
+  color: var(--color-text-secondary);
   padding-left: 4px;
 }
 
@@ -209,15 +209,15 @@ import { RightOutlined, ThunderboltOutlined } from "@ant-design/icons-vue";
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-border-light);
   border-radius: 8px;
   font-size: 14px;
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
 
   .select-arrow {
     font-size: 12px;
-    color: #737373;
+    color: var(--color-text-muted);
   }
 }
 
@@ -225,7 +225,7 @@ import { RightOutlined, ThunderboltOutlined } from "@ant-design/icons-vue";
   padding: 8px 12px;
   border-radius: 8px;
   font-size: 14px;
-  color: #d4d4d4;
+  color: var(--color-text-secondary);
   border: 1px solid transparent;
   cursor: default;
 }
@@ -237,8 +237,8 @@ import { RightOutlined, ThunderboltOutlined } from "@ant-design/icons-vue";
 .generate-btn {
   width: 100%;
   padding: 10px 0;
-  background: linear-gradient(135deg, #06b6d4, #3b82f6);
-  color: #fff;
+  background: var(--gradient-primary);
+  color: var(--color-text);
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
@@ -258,7 +258,7 @@ import { RightOutlined, ThunderboltOutlined } from "@ant-design/icons-vue";
 .mockup-canvas {
   flex: 1;
   padding: 32px 40px;
-  background: #121214;
+  background: var(--color-background-tertiary);
   overflow-y: auto;
 }
 
@@ -270,7 +270,7 @@ import { RightOutlined, ThunderboltOutlined } from "@ant-design/icons-vue";
 .article-title {
   font-size: 26px;
   font-weight: 700;
-  color: #fff;
+  color: var(--color-text);
   margin: 0 0 24px;
   line-height: 1.4;
   letter-spacing: -0.5px;
@@ -288,7 +288,7 @@ import { RightOutlined, ThunderboltOutlined } from "@ant-design/icons-vue";
   gap: 10px;
   margin: 0;
   font-size: 15px;
-  color: #a3a3a3;
+  color: var(--color-text-secondary);
   line-height: 1.7;
 }
 
@@ -296,7 +296,7 @@ import { RightOutlined, ThunderboltOutlined } from "@ant-design/icons-vue";
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #06b6d4;
+  background: var(--color-accent-cyan);
   flex-shrink: 0;
   margin-top: 9px;
   box-shadow: 0 0 8px rgba(6, 182, 212, 0.8);
@@ -318,14 +318,14 @@ import { RightOutlined, ThunderboltOutlined } from "@ant-design/icons-vue";
     left: 0;
     width: 4px;
     height: 100%;
-    background: #3b82f6;
+    background: var(--color-primary);
   }
 }
 
 .ai-card-title {
   font-size: 14px;
   font-weight: 500;
-  color: #60a5fa;
+  color: var(--color-primary-light);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -334,7 +334,7 @@ import { RightOutlined, ThunderboltOutlined } from "@ant-design/icons-vue";
 
 .ai-card-text {
   font-size: 14px;
-  color: #d4d4d4;
+  color: var(--color-text-secondary);
   margin: 0 0 12px;
   line-height: 1.6;
 }
@@ -347,7 +347,7 @@ import { RightOutlined, ThunderboltOutlined } from "@ant-design/icons-vue";
 .ai-btn-primary {
   font-size: 12px;
   background: rgba(59, 130, 246, 0.2);
-  color: #93c5fd;
+  color: var(--color-primary-light);
   padding: 6px 12px;
   border-radius: 6px;
   border: none;
@@ -360,15 +360,15 @@ import { RightOutlined, ThunderboltOutlined } from "@ant-design/icons-vue";
 
 .ai-btn-secondary {
   font-size: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #a3a3a3;
+  background: var(--color-border-light);
+  color: var(--color-text-secondary);
   padding: 6px 12px;
   border-radius: 6px;
   border: none;
   cursor: pointer;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--color-border);
   }
 }
 
@@ -382,7 +382,7 @@ import { RightOutlined, ThunderboltOutlined } from "@ant-design/icons-vue";
   .mockup-sidebar {
     width: 100%;
     border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--color-border-light);
     flex-shrink: 1;
   }
 

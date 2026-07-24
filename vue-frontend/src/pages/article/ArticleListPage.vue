@@ -436,7 +436,7 @@ onMounted(() => {
 }
 
 .status-dot.pending {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--color-fill-secondary);
   color: var(--color-text-muted);
 }
 

@@ -171,7 +171,7 @@ const handleSubmit = async (values: any) => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #2563eb 100%);
+  background: var(--gradient-primary);
 }
 
 .brand-bg::before {
@@ -242,7 +242,7 @@ const handleSubmit = async (values: any) => {
 
 .brand-features {
   text-align: left;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-fill);
   border-radius: var(--radius-lg);
   padding: 20px 24px;
   backdrop-filter: blur(8px);
