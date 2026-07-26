@@ -1,9 +1,9 @@
 """Iconify 图标库检索服务"""
 
 import logging
-import httpx
-from typing import Optional
 from urllib.parse import quote
+
+import httpx
 
 from app.config import settings
 from app.constants.article import ArticleConstant
@@ -23,7 +23,7 @@ class IconifyService(ImageSearchService):
         self.default_color = settings.iconify_default_color
         self.client = httpx.AsyncClient(timeout=30.0)
 
-    async def search_image(self, keywords: str) -> Optional[str]:
+    async def search_image(self, keywords: str) -> str | None:
         """搜索图标并返回 SVG URL"""
         if not keywords or not keywords.strip():
             logger.warning("Iconify 搜索关键词为空")
@@ -67,7 +67,7 @@ class IconifyService(ImageSearchService):
             f"{self.api_url}/search?query={encoded_keywords}&limit={self.search_limit}"
         )
 
-    async def _call_api(self, url: str) -> Optional[dict]:
+    async def _call_api(self, url: str) -> dict | None:
         """调用 Iconify API"""
         try:
             response = await self.client.get(url)
@@ -79,7 +79,7 @@ class IconifyService(ImageSearchService):
             logger.error(f"Iconify API 调用异常: {e}")
             return None
 
-    def _extract_first_icon(self, search_result: dict) -> Optional[str]:
+    def _extract_first_icon(self, search_result: dict) -> str | None:
         """从搜索结果中提取第一个图标名称"""
         try:
             icons = search_result.get("icons", [])

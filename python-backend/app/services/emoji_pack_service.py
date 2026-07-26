@@ -1,9 +1,9 @@
 """表情包检索服务"""
 
 import logging
-import httpx
-from typing import Optional
 from urllib.parse import quote
+
+import httpx
 from bs4 import BeautifulSoup
 
 from app.config import settings
@@ -28,7 +28,7 @@ class EmojiPackService(ImageSearchService):
             },
         )
 
-    async def search_image(self, keywords: str) -> Optional[str]:
+    async def search_image(self, keywords: str) -> str | None:
         """搜索表情包"""
         if not keywords or not keywords.strip():
             logger.warning("表情包搜索关键词为空")

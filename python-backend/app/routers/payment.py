@@ -1,20 +1,19 @@
 """支付路由"""
 
 import logging
-from typing import List, Optional
 
 from databases import Database
 from fastapi import APIRouter, Depends, Header, Request
 
-from app.database import get_db
 from app.constants.user import UserConstant
+from app.database import get_db
 from app.deps import require_login
 from app.exceptions import BusinessException, ErrorCode
+from app.models.enums import ProductTypeEnum
 from app.schemas.common import BaseResponse
 from app.schemas.payment import CreatePaymentSessionRequest, PaymentRecordVO
 from app.schemas.user import LoginUserVO
 from app.services.payment_service import PaymentService
-from app.models.enums import ProductTypeEnum
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +50,7 @@ async def create_vip_payment_session(
 
 @payment_router.post("/refund", response_model=BaseResponse[bool])
 async def refund(
-    reason: Optional[str] = None,
+    reason: str | None = None,
     db: Database = Depends(get_db),
     current_user: LoginUserVO = Depends(require_login),
 ):
@@ -63,7 +62,7 @@ async def refund(
     return BaseResponse.success(data=success)
 
 
-@payment_router.get("/records", response_model=BaseResponse[List[PaymentRecordVO]])
+@payment_router.get("/records", response_model=BaseResponse[list[PaymentRecordVO]])
 async def get_payment_records(
     db: Database = Depends(get_db),
     current_user: LoginUserVO = Depends(require_login),
@@ -98,9 +97,8 @@ async def stripe_webhook(
             "checkout.session.completed",
             "checkout.session.async_payment_succeeded",
         }:
-            session_id = (
-                getattr(data_object, "id", None)
-                or (data_object.get("id") if isinstance(data_object, dict) else None)
+            session_id = getattr(data_object, "id", None) or (
+                data_object.get("id") if isinstance(data_object, dict) else None
             )
             logger.info(f"Processing payment success: session_id={session_id}")
             await service.handle_payment_success(data_object)

@@ -1,17 +1,17 @@
 """数据统计路由"""
 
-from fastapi import APIRouter, Depends
 from databases import Database
+from fastapi import APIRouter, Depends
 
 from app.database import get_db
+from app.deps import require_admin
 from app.schemas import (
     BaseResponse,
-    StatisticsQueryRequest,
     DashboardStatsVO,
     LoginUserVO,
+    StatisticsQueryRequest,
 )
 from app.services.statistics_service import StatisticsService
-from app.deps import require_admin
 
 router = APIRouter(prefix="/statistics", tags=["Statistics"])
 

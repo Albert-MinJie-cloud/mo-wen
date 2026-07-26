@@ -1,7 +1,7 @@
-from app.database import Base
-
-from sqlalchemy import Column, BigInteger, String, DateTime, SmallInteger, Text, Integer
+from sqlalchemy import BigInteger, Column, DateTime, Integer, SmallInteger, String, Text
 from sqlalchemy.sql import func
+
+from app.database import Base
 
 
 class AgentLog(Base):

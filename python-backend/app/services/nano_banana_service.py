@@ -1,15 +1,15 @@
 """Nano Banana (Gemini 原生图片生成) 服务"""
 
 import logging
-from typing import Optional
+
 from google import genai
 from google.genai import types
 
 from app.config import settings
 from app.constants.article import ArticleConstant
 from app.models.enums import ImageMethodEnum
-from app.services.image_search_service import ImageSearchService
 from app.schemas.image import ImageData, ImageRequest
+from app.services.image_search_service import ImageSearchService
 
 logger = logging.getLogger(__name__)
 
@@ -25,16 +25,16 @@ class NanoBananaService(ImageSearchService):
         # 初始化 Gemini 客户端
         self.client = genai.Client(api_key=self.api_key)
 
-    async def search_image(self, keywords: str) -> Optional[str]:
+    async def search_image(self, keywords: str) -> str | None:
         """此方法已废弃，请使用 get_image_data()"""
         return None
 
-    async def get_image_data(self, request: ImageRequest) -> Optional[ImageData]:
+    async def get_image_data(self, request: ImageRequest) -> ImageData | None:
         """获取图片数据"""
         prompt = request.get_effective_param(True)
         return await self.generate_image_data(prompt)
 
-    async def generate_image_data(self, prompt: str) -> Optional[ImageData]:
+    async def generate_image_data(self, prompt: str) -> ImageData | None:
         """
         根据提示词生成图片数据
 

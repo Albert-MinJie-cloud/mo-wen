@@ -1,12 +1,13 @@
 """Session 管理工具"""
 
-import redis.asyncio as redis
 import json
-from typing import Optional, Any
+
+import redis.asyncio as redis
+
 from app.config import settings
 
 # Redis 连接池
-redis_client: Optional[redis.Redis] = None
+redis_client: redis.Redis | None = None
 
 
 async def init_redis():
@@ -29,7 +30,7 @@ def _get_session_key(session_id: str) -> str:
     return f"session:{session_id}"
 
 
-async def get_session(session_id: str) -> Optional[dict]:
+async def get_session(session_id: str) -> dict | None:
     """获取 Session 数据"""
     if not redis_client:
         return None
@@ -42,7 +43,7 @@ async def get_session(session_id: str) -> Optional[dict]:
     return None
 
 
-async def set_session(session_id: str, data: dict, expire: Optional[int] = None):
+async def set_session(session_id: str, data: dict, expire: int | None = None):
     """设置 Session 数据"""
     if not redis_client:
         return

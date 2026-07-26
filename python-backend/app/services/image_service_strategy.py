@@ -1,19 +1,18 @@
 """图片服务策略选择器"""
 
 import logging
-from typing import Dict, List, Optional
 
-from app.models.enums import ImageMethodEnum
-from app.services.image_search_service import ImageSearchService
-from app.services.pexels_service import PexelsService
-from app.services.nano_banana_service import NanoBananaService
-from app.services.mermaid_service import MermaidService
-from app.services.iconify_service import IconifyService
-from app.services.emoji_pack_service import EmojiPackService
-from app.services.svg_diagram_service import SvgDiagramService
-from app.services.cos_service import CosService
-from app.schemas import ImageRequest, ImageData
 from app.constants import ArticleConstant
+from app.models.enums import ImageMethodEnum
+from app.schemas import ImageData, ImageRequest
+from app.services.cos_service import CosService
+from app.services.emoji_pack_service import EmojiPackService
+from app.services.iconify_service import IconifyService
+from app.services.image_search_service import ImageSearchService
+from app.services.mermaid_service import MermaidService
+from app.services.nano_banana_service import NanoBananaService
+from app.services.pexels_service import PexelsService
+from app.services.svg_diagram_service import SvgDiagramService
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +37,7 @@ class ImageServiceStrategy:
 
     def __init__(self):
         # 初始化所有图片服务
-        self.service_map: Dict[ImageMethodEnum, ImageSearchService] = {}
+        self.service_map: dict[ImageMethodEnum, ImageSearchService] = {}
         self.cos_service = CosService()
 
         # 注册所有服务
@@ -117,9 +116,7 @@ class ImageServiceStrategy:
             )
             return ImageMethodEnum.get_default_search_method()
 
-    async def _handle_fallback_with_upload(
-        self, position: Optional[int]
-    ) -> ImageResult:
+    async def _handle_fallback_with_upload(self, position: int | None) -> ImageResult:
         """处理降级逻辑"""
         pos = position if position else 1
         fallback_url = self._get_fallback_image(pos)
@@ -155,6 +152,6 @@ class ImageServiceStrategy:
             return default_service.get_fallback_image(position)
         return ArticleConstant.PICSUM_URL_TEMPLATE.format(position)
 
-    def get_registered_methods(self) -> List[ImageMethodEnum]:
+    def get_registered_methods(self) -> list[ImageMethodEnum]:
         """获取所有已注册的图片服务类型"""
         return list(self.service_map.keys())

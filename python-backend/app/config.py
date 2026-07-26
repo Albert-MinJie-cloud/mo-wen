@@ -1,5 +1,5 @@
-import os
 from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # 获取项目根目录（python-backend 目录）
@@ -82,6 +82,10 @@ class Settings(BaseSettings):
     svg_diagram_default_width: int = 800
     svg_diagram_default_height: int = 600
     svg_diagram_folder: str = "svg-diagrams"
+
+    # 多智能体并行编排配置
+    agent_image_max_concurrency: int = 3
+    agent_image_fail_fast: bool = True
 
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE),

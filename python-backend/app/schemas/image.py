@@ -1,20 +1,21 @@
 """图片相关数据模型"""
 
 import base64
-from typing import Optional
 from enum import Enum
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
 class ImageRequest(BaseModel):
     """图片请求对象"""
 
-    keywords: Optional[str] = Field(None, description="搜索关键词（用于图库检索）")
-    prompt: Optional[str] = Field(None, description="生图提示词（用于 AI 生图）")
-    position: Optional[int] = Field(None, description="图片位置序号")
-    type: Optional[str] = Field(None, description="图片类型（cover/section）")
-    aspect_ratio: Optional[str] = Field(None, description="宽高比（如 16:9, 1:1）")
-    style: Optional[str] = Field(None, description="图片风格描述")
+    keywords: str | None = Field(None, description="搜索关键词（用于图库检索）")
+    prompt: str | None = Field(None, description="生图提示词（用于 AI 生图）")
+    position: int | None = Field(None, description="图片位置序号")
+    type: str | None = Field(None, description="图片类型（cover/section）")
+    aspect_ratio: str | None = Field(None, description="宽高比（如 16:9, 1:1）")
+    style: str | None = Field(None, description="图片风格描述")
 
     def get_effective_param(self, is_ai_generated: bool) -> str:
         """AI 生图优先使用 prompt，图库检索使用 keywords"""
@@ -39,10 +40,10 @@ class ImageData:
 
     def __init__(
         self,
-        bytes_data: Optional[bytes] = None,
-        url: Optional[str] = None,
-        mime_type: Optional[str] = None,
-        data_type: Optional[DataType] = None,
+        bytes_data: bytes | None = None,
+        url: str | None = None,
+        mime_type: str | None = None,
+        data_type: DataType | None = None,
     ):
         self.bytes = bytes_data
         self.url = url
@@ -50,7 +51,7 @@ class ImageData:
         self.data_type = data_type
 
     @classmethod
-    def from_url(cls, url: Optional[str]) -> Optional["ImageData"]:
+    def from_url(cls, url: str | None) -> Optional["ImageData"]:
         """从外部 URL 创建 ImageData"""
         if not url:
             return None
@@ -85,7 +86,7 @@ class ImageData:
 
         return cls(bytes_data=bytes_data, mime_type=mime_type, data_type=DataType.BYTES)
 
-    def get_image_bytes(self) -> Optional[bytes]:
+    def get_image_bytes(self) -> bytes | None:
         """获取图片字节数据（如果是 data URL，会解码 base64）"""
         if self.data_type == DataType.BYTES:
             return self.bytes

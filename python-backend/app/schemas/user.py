@@ -1,6 +1,5 @@
 """用户相关请求/响应模型"""
 
-from typing import Optional
 from pydantic import BaseModel, Field
 
 from app.schemas.common import PageRequest
@@ -36,11 +35,9 @@ class UserAddRequest(BaseModel):
 
     user_account: str = Field(..., alias="userAccount", description="账号")
     user_password: str = Field(..., alias="userPassword", description="密码")
-    user_name: Optional[str] = Field(None, alias="userName", description="用户昵称")
-    user_avatar: Optional[str] = Field(None, alias="userAvatar", description="用户头像")
-    user_profile: Optional[str] = Field(
-        None, alias="userProfile", description="用户简介"
-    )
+    user_name: str | None = Field(None, alias="userName", description="用户昵称")
+    user_avatar: str | None = Field(None, alias="userAvatar", description="用户头像")
+    user_profile: str | None = Field(None, alias="userProfile", description="用户简介")
     user_role: str = Field(default="user", alias="userRole", description="用户角色")
 
 
@@ -48,24 +45,20 @@ class UserUpdateRequest(BaseModel):
     """更新用户请求（管理员）"""
 
     id: int = Field(..., description="用户 ID")
-    user_name: Optional[str] = Field(None, alias="userName", description="用户昵称")
-    user_avatar: Optional[str] = Field(None, alias="userAvatar", description="用户头像")
-    user_profile: Optional[str] = Field(
-        None, alias="userProfile", description="用户简介"
-    )
-    user_role: Optional[str] = Field(None, alias="userRole", description="用户角色")
+    user_name: str | None = Field(None, alias="userName", description="用户昵称")
+    user_avatar: str | None = Field(None, alias="userAvatar", description="用户头像")
+    user_profile: str | None = Field(None, alias="userProfile", description="用户简介")
+    user_role: str | None = Field(None, alias="userRole", description="用户角色")
 
 
 class UserQueryRequest(PageRequest):
     """用户查询请求"""
 
-    id: Optional[int] = Field(None, description="用户 ID")
-    user_account: Optional[str] = Field(None, alias="userAccount", description="账号")
-    user_name: Optional[str] = Field(None, alias="userName", description="用户昵称")
-    user_profile: Optional[str] = Field(
-        None, alias="userProfile", description="用户简介"
-    )
-    user_role: Optional[str] = Field(None, alias="userRole", description="用户角色")
+    id: int | None = Field(None, description="用户 ID")
+    user_account: str | None = Field(None, alias="userAccount", description="账号")
+    user_name: str | None = Field(None, alias="userName", description="用户昵称")
+    user_profile: str | None = Field(None, alias="userProfile", description="用户简介")
+    user_role: str | None = Field(None, alias="userRole", description="用户角色")
 
 
 class UserVO(BaseModel):
@@ -73,14 +66,14 @@ class UserVO(BaseModel):
 
     id: int
     user_account: str = Field(..., alias="userAccount")
-    user_name: Optional[str] = Field(None, alias="userName")
-    user_avatar: Optional[str] = Field(None, alias="userAvatar")
-    user_profile: Optional[str] = Field(None, alias="userProfile")
+    user_name: str | None = Field(None, alias="userName")
+    user_avatar: str | None = Field(None, alias="userAvatar")
+    user_profile: str | None = Field(None, alias="userProfile")
     user_role: str = Field(..., alias="userRole")
     create_time: str = Field(..., alias="createTime")
-    quota: Optional[int] = Field(None, description="用户额度")
-    vip_time: Optional[str] = Field(None, alias="vipTime", description="成为会员时间")
-    vip_expire_time: Optional[str] = Field(
+    quota: int | None = Field(None, description="用户额度")
+    vip_time: str | None = Field(None, alias="vipTime", description="成为会员时间")
+    vip_expire_time: str | None = Field(
         None, alias="vipExpireTime", description="VIP过期时间，NULL表示永久会员"
     )
 
@@ -93,15 +86,15 @@ class LoginUserVO(BaseModel):
 
     id: int
     user_account: str = Field(..., alias="userAccount")
-    user_name: Optional[str] = Field(None, alias="userName")
-    user_avatar: Optional[str] = Field(None, alias="userAvatar")
-    user_profile: Optional[str] = Field(None, alias="userProfile")
+    user_name: str | None = Field(None, alias="userName")
+    user_avatar: str | None = Field(None, alias="userAvatar")
+    user_profile: str | None = Field(None, alias="userProfile")
     user_role: str = Field(..., alias="userRole")
     create_time: str = Field(..., alias="createTime")
     update_time: str = Field(..., alias="updateTime")
-    quota: Optional[int] = Field(None, description="用户额度")
-    vip_time: Optional[str] = Field(None, alias="vipTime", description="成为会员时间")
-    vip_expire_time: Optional[str] = Field(
+    quota: int | None = Field(None, description="用户额度")
+    vip_time: str | None = Field(None, alias="vipTime", description="成为会员时间")
+    vip_expire_time: str | None = Field(
         None, alias="vipExpireTime", description="VIP过期时间，NULL表示永久会员"
     )
 

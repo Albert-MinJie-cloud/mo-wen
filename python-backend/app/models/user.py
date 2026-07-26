@@ -1,6 +1,5 @@
 # 创建SQLAlchemy orm模型
-from datetime import datetime
-from sqlalchemy import Column, BigInteger, String, DateTime, SmallInteger, Text
+from sqlalchemy import BigInteger, Column, DateTime, SmallInteger, String
 from sqlalchemy.sql import func
 
 from app.database import Base
@@ -68,5 +67,8 @@ class User(Base):
 
     vip_time = Column("vipTime", DateTime, nullable=True, comment="成为会员时间")
     vip_expire_time = Column(
-        "vipExpireTime", DateTime, nullable=True, comment="VIP过期时间，NULL表示永久会员"
+        "vipExpireTime",
+        DateTime,
+        nullable=True,
+        comment="VIP过期时间，NULL表示永久会员",
     )

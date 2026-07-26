@@ -1,21 +1,20 @@
 """数据统计服务"""
 
 from datetime import datetime, timedelta
-from typing import Dict
 
 from databases import Database
 
 from app.schemas.statistics import (
-    CreationTrendVO,
-    CreationTrendItem,
-    AgentPerformanceVO,
     AgentPerformanceItem,
+    AgentPerformanceVO,
+    CreationTrendItem,
+    CreationTrendVO,
+    DashboardStatsVO,
+    QuotaUsageItem,
+    QuotaUsageVO,
+    StatisticsQueryRequest,
     UserAnalysisVO,
     UserTrendItem,
-    QuotaUsageVO,
-    QuotaUsageItem,
-    DashboardStatsVO,
-    StatisticsQueryRequest,
 )
 
 
@@ -25,13 +24,19 @@ class StatisticsService:
     def __init__(self, db: Database):
         self.db = db
 
-    async def get_dashboard_stats(self, request: StatisticsQueryRequest) -> DashboardStatsVO:
+    async def get_dashboard_stats(
+        self, request: StatisticsQueryRequest
+    ) -> DashboardStatsVO:
         """获取仪表盘全量统计数据"""
         start_date, end_date = self._resolve_date_range(request)
 
-        creation_trend = await self._get_creation_trends(start_date, end_date, request.granularity)
+        creation_trend = await self._get_creation_trends(
+            start_date, end_date, request.granularity
+        )
         agent_perf = await self._get_agent_performance(start_date, end_date)
-        user_analysis = await self._get_user_analysis(start_date, end_date, request.granularity)
+        user_analysis = await self._get_user_analysis(
+            start_date, end_date, request.granularity
+        )
         quota_usage = await self._get_quota_usage(start_date, end_date)
 
         return DashboardStatsVO(
@@ -86,7 +91,9 @@ class StatisticsService:
             values={"start_date": start_date, "end_date": end_date},
         )
 
-        items = [CreationTrendItem(date=str(row["date"]), count=row["count"]) for row in rows]
+        items = [
+            CreationTrendItem(date=str(row["date"]), count=row["count"]) for row in rows
+        ]
         return CreationTrendVO(items=items)
 
     async def _get_agent_performance(
@@ -139,7 +146,11 @@ class StatisticsService:
             query="SELECT COUNT(*) FROM user WHERE isDelete = 0 AND userRole = 'vip'",
         )
 
-        vip_rate = round(float(total_vip) / float(total_users) * 100, 2) if total_users > 0 else 0.0
+        vip_rate = (
+            round(float(total_vip) / float(total_users) * 100, 2)
+            if total_users > 0
+            else 0.0
+        )
 
         # 注册趋势
         trunc_sql = self._trunc_sql(granularity)
@@ -173,7 +184,7 @@ class StatisticsService:
             values={"start_date": start_date, "end_date": end_date},
         )
 
-        vip_map: Dict[str, int] = {str(r["date"]): r["newVip"] for r in vip_rows}
+        vip_map: dict[str, int] = {str(r["date"]): r["newVip"] for r in vip_rows}
         trends = [
             UserTrendItem(
                 date=str(r["date"]),
@@ -190,9 +201,7 @@ class StatisticsService:
             trends=trends,
         )
 
-    async def _get_quota_usage(
-        self, start_date: str, end_date: str
-    ) -> QuotaUsageVO:
+    async def _get_quota_usage(self, start_date: str, end_date: str) -> QuotaUsageVO:
         """配额使用情况"""
         total = await self.db.fetch_val(
             query="""

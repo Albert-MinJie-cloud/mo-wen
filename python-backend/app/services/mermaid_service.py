@@ -1,16 +1,15 @@
-"""Mermaid 流程图生成服务 """
+"""Mermaid 流程图生成服务"""
 
 import logging
-import tempfile
 import subprocess
-from typing import Optional
+import tempfile
 from pathlib import Path
 
 from app.config import settings
 from app.constants.article import ArticleConstant
 from app.models.enums import ImageMethodEnum
-from app.services.image_search_service import ImageSearchService
 from app.schemas.image import ImageData, ImageRequest
+from app.services.image_search_service import ImageSearchService
 
 logger = logging.getLogger(__name__)
 
@@ -25,21 +24,21 @@ class MermaidService(ImageSearchService):
         self.width = settings.mermaid_width
         self.timeout = settings.mermaid_timeout / 1000  # 转为秒
 
-    async def search_image(self, keywords: str) -> Optional[str]:
+    async def search_image(self, keywords: str) -> str | None:
         """此方法已废弃，请使用 get_image_data()"""
         return None
 
-    async def get_image(self, request: ImageRequest) -> Optional[str]:
+    async def get_image(self, request: ImageRequest) -> str | None:
         """此方法已废弃，请使用 get_image_data()"""
         return None
 
-    async def get_image_data(self, request: ImageRequest) -> Optional[ImageData]:
+    async def get_image_data(self, request: ImageRequest) -> ImageData | None:
         """获取图片数据"""
         # 优先使用 prompt（Mermaid 代码），否则使用 keywords
         mermaid_code = request.get_effective_param(True)
         return await self.generate_diagram_data(mermaid_code)
 
-    async def generate_diagram_data(self, mermaid_code: str) -> Optional[ImageData]:
+    async def generate_diagram_data(self, mermaid_code: str) -> ImageData | None:
         """
         生成 Mermaid 图表数据
 

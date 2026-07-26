@@ -1,8 +1,8 @@
 """Pexels 图片检索服务"""
 
-import httpx
 import logging
-from typing import Optional
+
+import httpx
 
 from app.config import settings
 from app.constants.article import ArticleConstant
@@ -19,7 +19,7 @@ class PexelsService(ImageSearchService):
         self.api_key = settings.pexels_api_key
         self.client = httpx.AsyncClient(timeout=30.0)
 
-    async def search_image(self, keywords: str) -> Optional[str]:
+    async def search_image(self, keywords: str) -> str | None:
         """
         搜索图片
 
@@ -61,7 +61,7 @@ class PexelsService(ImageSearchService):
             f"&orientation={ArticleConstant.PEXELS_ORIENTATION_LANDSCAPE}"
         )
 
-    def _extract_image_url(self, response_data: dict, keywords: str) -> Optional[str]:
+    def _extract_image_url(self, response_data: dict, keywords: str) -> str | None:
         """从响应中提取图片 URL"""
         photos = response_data.get("photos", [])
 

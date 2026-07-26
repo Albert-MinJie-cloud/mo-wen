@@ -1,22 +1,22 @@
 """用户服务"""
 
 from datetime import datetime
-from typing import Optional, List, Tuple
-from sqlalchemy import select, func, and_, or_
-from databases import Database
 
+from databases import Database
+from sqlalchemy import and_, func, select
+
+from app.constants.user import UserConstant
+from app.exceptions import ErrorCode, throw_if, throw_if_not
 from app.models.user import User
 from app.schemas.user import (
-    UserRegisterRequest,
-    UserLoginRequest,
-    UserAddRequest,
-    UserUpdateRequest,
-    UserQueryRequest,
-    UserVO,
     LoginUserVO,
+    UserAddRequest,
+    UserLoginRequest,
+    UserQueryRequest,
+    UserRegisterRequest,
+    UserUpdateRequest,
+    UserVO,
 )
-from app.constants.user import UserConstant
-from app.exceptions import ErrorCode, throw_if, throw_if_not, BusinessException
 from app.utils.password import encrypt_password
 
 
@@ -144,7 +144,7 @@ class UserService:
             updateTime=user_dict["updateTime"].isoformat(),
         )
 
-    async def get_login_user_by_id(self, user_id: int) -> Optional[LoginUserVO]:
+    async def get_login_user_by_id(self, user_id: int) -> LoginUserVO | None:
         """根据 ID 获取登录用户信息（含 VIP 过期检查）"""
         query = select(User).where(and_(User.id == user_id, User.is_delete == 0))
         user = await self.db.fetch_one(query)
@@ -191,7 +191,7 @@ class UserService:
             updateTime=user_dict["updateTime"].isoformat(),
         )
 
-    async def get_by_id(self, user_id: int) -> Optional[UserVO]:
+    async def get_by_id(self, user_id: int) -> UserVO | None:
         """根据 ID 获取用户"""
         query = select(User).where(and_(User.id == user_id, User.is_delete == 0))
         user = await self.db.fetch_one(query)
@@ -215,7 +215,7 @@ class UserService:
             createTime=user_dict["createTime"].isoformat(),
         )
 
-    async def list_by_page(self, request: UserQueryRequest) -> Tuple[List[UserVO], int]:
+    async def list_by_page(self, request: UserQueryRequest) -> tuple[list[UserVO], int]:
         """分页查询用户列表"""
         # 构建查询条件
         conditions = [User.is_delete == 0]

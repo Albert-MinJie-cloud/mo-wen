@@ -1,30 +1,29 @@
 """用户路由"""
 
-from typing import Optional
-from fastapi import APIRouter, Depends, Response
 from databases import Database
+from fastapi import APIRouter, Depends, Response
 
+from app.config import settings
 from app.database import get_db
-from app.schemas.common import BaseResponse, DeleteRequest
-from app.schemas.user import (
-    UserRegisterRequest,
-    UserLoginRequest,
-    UserAddRequest,
-    UserUpdateRequest,
-    UserQueryRequest,
-    UserVO,
-    LoginUserVO,
-)
-from app.services.user_service import UserService
 from app.deps import (
+    generate_session_id,
     get_current_user,
     get_session_id,
-    require_login,
     require_admin,
-    generate_session_id,
+    require_login,
 )
-from app.utils.session import set_session, remove_session
-from app.config import settings
+from app.schemas.common import BaseResponse, DeleteRequest
+from app.schemas.user import (
+    LoginUserVO,
+    UserAddRequest,
+    UserLoginRequest,
+    UserQueryRequest,
+    UserRegisterRequest,
+    UserUpdateRequest,
+    UserVO,
+)
+from app.services.user_service import UserService
+from app.utils.session import remove_session, set_session
 
 router = APIRouter(prefix="/user", tags=["User"])
 
@@ -66,8 +65,8 @@ async def login(
 @router.post("/logout", response_model=BaseResponse[bool])
 async def logout(
     response: Response,
-    current_user: Optional[LoginUserVO] = Depends(get_current_user),
-    session_id: Optional[str] = Depends(get_session_id),
+    current_user: LoginUserVO | None = Depends(get_current_user),
+    session_id: str | None = Depends(get_session_id),
 ):
     """用户登出"""
     # 删除 Redis Session
@@ -83,7 +82,7 @@ async def logout(
 @router.get("/get/login", response_model=BaseResponse[LoginUserVO])
 async def get_login_user(
     current_user: LoginUserVO = Depends(require_login),
-    session_id: Optional[str] = Depends(get_session_id),
+    session_id: str | None = Depends(get_session_id),
     db: Database = Depends(get_db),
 ):
     """获取当前登录用户（从数据库重新读取，确保 VIP 状态最新）"""

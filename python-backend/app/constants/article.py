@@ -1,6 +1,3 @@
-"""文章相关常量"""
-
-
 class ArticleConstant:
     """文章相关常量"""
 

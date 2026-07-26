@@ -1,6 +1,6 @@
 """Article ORM 模型"""
 
-from sqlalchemy import Column, BigInteger, String, DateTime, SmallInteger, Text
+from sqlalchemy import BigInteger, Column, DateTime, SmallInteger, String, Text
 from sqlalchemy.sql import func
 
 from app.database import Base
@@ -70,5 +70,3 @@ class Article(Base):
         default="PENDING",
         comment="阶段：PENDING/TITLE_GENERATING/TITLE_SELECTING/OUTLINE_GENERATING/OUTLINE_EDITING/CONTENT_GENERATING",
     )
-
-

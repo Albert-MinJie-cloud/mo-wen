@@ -1,15 +1,15 @@
 """SVG 概念示意图生成服务"""
 
 import logging
-from typing import Optional
+
 from openai import AsyncOpenAI
 
 from app.config import settings
-from app.constants.prompt import PromptConstant
 from app.constants.article import ArticleConstant
+from app.constants.prompt import PromptConstant
 from app.models.enums import ImageMethodEnum
-from app.services.image_search_service import ImageSearchService
 from app.schemas.image import ImageData, ImageRequest
+from app.services.image_search_service import ImageSearchService
 
 logger = logging.getLogger(__name__)
 
@@ -27,16 +27,16 @@ class SvgDiagramService(ImageSearchService):
         self.default_width = settings.svg_diagram_default_width
         self.default_height = settings.svg_diagram_default_height
 
-    async def search_image(self, keywords: str) -> Optional[str]:
+    async def search_image(self, keywords: str) -> str | None:
         """此方法已废弃，请使用 get_image_data()"""
         return None
 
-    async def get_image_data(self, request: ImageRequest) -> Optional[ImageData]:
+    async def get_image_data(self, request: ImageRequest) -> ImageData | None:
         """获取图片数据"""
         requirement = request.get_effective_param(True)
         return await self.generate_svg_diagram_data(requirement)
 
-    async def generate_svg_diagram_data(self, requirement: str) -> Optional[ImageData]:
+    async def generate_svg_diagram_data(self, requirement: str) -> ImageData | None:
         """
         生成 SVG 概念示意图数据
 
@@ -74,7 +74,7 @@ class SvgDiagramService(ImageSearchService):
             )
             return None
 
-    async def _call_llm_to_generate_svg(self, requirement: str) -> Optional[str]:
+    async def _call_llm_to_generate_svg(self, requirement: str) -> str | None:
         """调用 LLM 生成 SVG 代码"""
         prompt = PromptConstant.SVG_DIAGRAM_GENERATION_PROMPT.replace(
             "{requirement}", requirement

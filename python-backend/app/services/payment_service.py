@@ -3,7 +3,7 @@
 import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Any, List, Optional
+from typing import Any
 
 import stripe
 from databases import Database
@@ -42,7 +42,7 @@ class PaymentService:
     """支付服务"""
 
     CURRENCY_USD = "usd"
-    CENTS_MULTIPLIER = Decimal("100")
+    CENTS_MULTIPLIER = Decimal(100)
 
     def __init__(self, db: Database):
         self.db = db
@@ -283,7 +283,7 @@ class PaymentService:
                 },
             )
 
-    async def handle_refund(self, user_id: int, reason: Optional[str]) -> bool:
+    async def handle_refund(self, user_id: int, reason: str | None) -> bool:
         """处理退款并撤销 VIP"""
         self._ensure_stripe_ready(require_webhook=False)
         user = await self._get_user_or_throw(user_id)
@@ -344,7 +344,7 @@ class PaymentService:
             )
         return True
 
-    async def get_payment_records(self, user_id: int) -> List[PaymentRecordVO]:
+    async def get_payment_records(self, user_id: int) -> list[PaymentRecordVO]:
         """获取用户支付记录"""
         records = await self.db.fetch_all(
             query="""
@@ -366,7 +366,7 @@ class PaymentService:
             raise BusinessException(ErrorCode.NOT_FOUND_ERROR, "用户不存在")
         return user
 
-    async def _get_current_vip_tier(self, user_id: int) -> Optional[ProductTypeEnum]:
+    async def _get_current_vip_tier(self, user_id: int) -> ProductTypeEnum | None:
         """从最新支付记录获取用户当前 VIP 档次"""
         record = await self.db.fetch_one(
             query="""

@@ -1,8 +1,7 @@
 """枚举类型定义"""
 
-from enum import Enum
-from typing import Optional
 from decimal import Decimal
+from enum import Enum
 
 
 class ArticleStatusEnum(str, Enum):
@@ -23,7 +22,7 @@ class ArticleStyleEnum(str, Enum):
     HUMOROUS = "humorous"
 
     @classmethod
-    def is_valid(cls, value: Optional[str]) -> bool:
+    def is_valid(cls, value: str | None) -> bool:
         """校验是否为有效的风格值"""
         if not value:
             return True  # 允许为空

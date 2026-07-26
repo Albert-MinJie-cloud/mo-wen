@@ -1,22 +1,23 @@
 # FastAPI 主应用入口
 
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.database import database
-from app.routers import (
-    user_router,
-    health_router,
-    article_router,
-    payment_router,
-    webhook_router,
-    statistics_router,
-)
 from app.exceptions import BusinessException, ErrorCode
-from app.utils.session import init_redis, close_redis
+from app.routers import (
+    article_router,
+    health_router,
+    payment_router,
+    statistics_router,
+    user_router,
+    webhook_router,
+)
+from app.utils.session import close_redis, init_redis
 
 
 @asynccontextmanager
@@ -81,7 +82,7 @@ async def exception_handler(request: Request, exc: Exception):
         content={
             "code": ErrorCode.SYSTEM_ERROR.code,
             "data": None,
-            "message": f"系统内部的异常: {str(exc)}",
+            "message": f"系统内部的异常: {exc!s}",
         },
     )
 

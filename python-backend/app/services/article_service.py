@@ -1,27 +1,28 @@
-import uuid
-import logging
 import json
-from typing import List, Optional, Tuple
+import logging
+import uuid
 from datetime import datetime
 
 from databases import Database
 from sqlalchemy import and_, func, select
 
+from app.constants.user import UserConstant
 from app.exceptions import (
     BusinessException,
     ErrorCode,
     throw_if,
     throw_if_not,
 )
-from app.schemas.article import ArticleState, ArticleVO, ArticleQueryRequest
+from app.models.article import Article
+from app.models.enums import ArticlePhaseEnum, ArticleStatusEnum, ImageMethodEnum
 from app.schemas.article import (
+    ArticleQueryRequest,
+    ArticleState,
+    ArticleVO,
     OutlineSection,
     TitleOption,
 )
 from app.schemas.user import LoginUserVO
-from app.models.article import Article
-from app.models.enums import ArticlePhaseEnum, ArticleStatusEnum, ImageMethodEnum
-from app.constants.user import UserConstant
 from app.services.article_agent_service import ArticleAgentService
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ class ArticleService:
 
     def _validate_image_methods(
         self,
-        enabled_image_methods: Optional[List[str]],
+        enabled_image_methods: list[str] | None,
         login_user: LoginUserVO,
     ):
         """校验普通用户高级配图权限"""
@@ -63,9 +64,9 @@ class ArticleService:
 
     def _process_image_methods(
         self,
-        enabled_image_methods: Optional[List[str]],
+        enabled_image_methods: list[str] | None,
         login_user: LoginUserVO,
-    ) -> Optional[List[str]]:
+    ) -> list[str] | None:
         """处理配图方式：VIP 放行全部，非 VIP 过滤 VIP 专属并设置默认值"""
         # VIP 或管理员：用户传了什么就用什么，没传则全部可用（None = 不限制）
         if self._is_vip_or_admin(login_user):
@@ -88,8 +89,8 @@ class ArticleService:
         self,
         topic: str,
         login_user: LoginUserVO,
-        style: Optional[str] = None,
-        enabled_image_methods: Optional[List[str]] = None,
+        style: str | None = None,
+        enabled_image_methods: list[str] | None = None,
     ) -> str:
         """创建文章任务"""
         self._validate_image_methods(enabled_image_methods, login_user)
@@ -131,8 +132,8 @@ class ArticleService:
         self,
         topic: str,
         login_user: LoginUserVO,
-        style: Optional[str] = None,
-        enabled_image_methods: Optional[List[str]] = None,
+        style: str | None = None,
+        enabled_image_methods: list[str] | None = None,
     ) -> str:
         """在同一事务中完成配额扣减和任务创建"""
         if self._is_vip_or_admin(login_user):
@@ -176,7 +177,7 @@ class ArticleService:
         self,
         task_id: str,
         status: ArticleStatusEnum,
-        error_message: Optional[str] = None,
+        error_message: str | None = None,
     ):
         """更新文章状态"""
         if status == ArticleStatusEnum.COMPLETED:
@@ -259,7 +260,7 @@ class ArticleService:
         self,
         request: ArticleQueryRequest,
         login_user: LoginUserVO,
-    ) -> Tuple[List[ArticleVO], int]:
+    ) -> tuple[list[ArticleVO], int]:
         """分页查询文章列表"""
         conditions = [Article.is_delete == 0]
         if login_user.user_role != "admin":
@@ -377,7 +378,7 @@ class ArticleService:
             values={"phase": phase.value, "taskId": task_id},
         )
 
-    async def save_title_options(self, task_id: str, title_options: List[TitleOption]):
+    async def save_title_options(self, task_id: str, title_options: list[TitleOption]):
         """保存标题方案列表"""
         await self.db.execute(
             query="UPDATE article SET titleOptions = :titleOptions WHERE taskId = :taskId",
@@ -395,7 +396,7 @@ class ArticleService:
         task_id: str,
         selected_main_title: str,
         selected_sub_title: str,
-        user_description: Optional[str],
+        user_description: str | None,
         login_user: LoginUserVO,
     ):
         """确认标题并进入大纲阶段"""
@@ -429,7 +430,7 @@ class ArticleService:
     async def confirm_outline(
         self,
         task_id: str,
-        outline: List[OutlineSection],
+        outline: list[OutlineSection],
         login_user: LoginUserVO,
     ):
         """确认大纲并进入正文阶段"""
@@ -458,7 +459,7 @@ class ArticleService:
             },
         )
 
-    async def save_outline(self, task_id: str, outline: List[OutlineSection]):
+    async def save_outline(self, task_id: str, outline: list[OutlineSection]):
         """保存大纲内容（不推进阶段）"""
         await self.db.execute(
             query="UPDATE article SET outline = :outline WHERE taskId = :taskId",
@@ -485,7 +486,7 @@ class ArticleService:
         task_id: str,
         modify_suggestion: str,
         login_user: LoginUserVO,
-    ) -> List[OutlineSection]:
+    ) -> list[OutlineSection]:
         """AI 修改大纲（VIP 功能）"""
         self._require_vip(login_user, "AI 修改大纲功能仅限 VIP 会员使用")
         article = await self.get_by_task_id(task_id)

@@ -1,13 +1,11 @@
 import asyncio
 import logging
-
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any
 
 from databases import Database
-from datetime import datetime
 
-from app.schemas import AgentLogVO, AgentExecutionStatsVO
-
+from app.schemas import AgentExecutionStatsVO, AgentLogVO
 
 logger = logging.getLogger(__name__)
 
@@ -18,11 +16,11 @@ class AgentLogService:
     def __init__(self, db: Database):
         self.db = db
 
-    def save_log_async(self, log_data: Dict[str, Any]):
+    def save_log_async(self, log_data: dict[str, Any]):
         """异步保存日志，不阻塞主执行链路"""
         asyncio.create_task(self._save_log(log_data))
 
-    async def _save_log(self, log_data: Dict[str, Any]):
+    async def _save_log(self, log_data: dict[str, Any]):
         """写入日志记录"""
         try:
             await self.db.execute(
@@ -56,7 +54,7 @@ class AgentLogService:
                 log_data.get("agentName"),
             )
 
-    async def get_logs_by_task_id(self, task_id: str) -> List[AgentLogVO]:
+    async def get_logs_by_task_id(self, task_id: str) -> list[AgentLogVO]:
         """查询任务下的执行日志"""
         rows = await self.db.fetch_all(
             query="""
@@ -84,7 +82,7 @@ class AgentLogService:
             )
 
         total_duration_ms = 0
-        agent_durations: Dict[str, int] = {}
+        agent_durations: dict[str, int] = {}
         overall_status = "SUCCESS"
 
         for log_item in logs:
@@ -105,7 +103,7 @@ class AgentLogService:
             logs=logs,
         )
 
-    def _to_agent_log_vo(self, row: Dict[str, Any]) -> AgentLogVO:
+    def _to_agent_log_vo(self, row: dict[str, Any]) -> AgentLogVO:
         """数据库记录转日志 VO"""
         return AgentLogVO(
             id=row["id"],
@@ -124,7 +122,7 @@ class AgentLogService:
         )
 
     @staticmethod
-    def _to_iso(value: Optional[datetime]) -> Optional[str]:
+    def _to_iso(value: datetime | None) -> str | None:
         if value is None:
             return None
         return value.isoformat()

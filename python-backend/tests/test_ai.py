@@ -1,6 +1,7 @@
 import asyncio
-from openai import AsyncOpenAI
+
 from app.config import settings
+from openai import AsyncOpenAI
 
 
 async def test_chat():

@@ -1,6 +1,6 @@
 """支付记录 ORM 模型"""
 
-from sqlalchemy import Column, BigInteger, String, DateTime, Numeric
+from sqlalchemy import BigInteger, Column, DateTime, Numeric, String
 from sqlalchemy.sql import func
 
 from app.database import Base

@@ -1,4 +1,3 @@
-from typing import Optional, Dict, List
 from pydantic import BaseModel, Field
 
 
@@ -9,13 +8,13 @@ class AgentLogVO(BaseModel):
     task_id: str = Field(..., alias="taskId")
     agent_name: str = Field(..., alias="agentName")
     start_time: str = Field(..., alias="startTime")
-    end_time: Optional[str] = Field(None, alias="endTime")
-    duration_ms: Optional[int] = Field(None, alias="durationMs")
+    end_time: str | None = Field(None, alias="endTime")
+    duration_ms: int | None = Field(None, alias="durationMs")
     status: str
-    error_message: Optional[str] = Field(None, alias="errorMessage")
-    prompt: Optional[str] = None
-    input_data: Optional[str] = Field(None, alias="inputData")
-    output_data: Optional[str] = Field(None, alias="outputData")
+    error_message: str | None = Field(None, alias="errorMessage")
+    prompt: str | None = None
+    input_data: str | None = Field(None, alias="inputData")
+    output_data: str | None = Field(None, alias="outputData")
     create_time: str = Field(..., alias="createTime")
     update_time: str = Field(..., alias="updateTime")
 
@@ -29,11 +28,11 @@ class AgentExecutionStatsVO(BaseModel):
     task_id: str = Field(..., alias="taskId")
     total_duration_ms: int = Field(..., alias="totalDurationMs")
     agent_count: int = Field(..., alias="agentCount")
-    agent_durations: Dict[str, int] = Field(
+    agent_durations: dict[str, int] = Field(
         default_factory=dict, alias="agentDurations"
     )
     overall_status: str = Field(..., alias="overallStatus")
-    logs: List[AgentLogVO] = Field(default_factory=list)
+    logs: list[AgentLogVO] = Field(default_factory=list)
 
     class Config:
         populate_by_name = True
@@ -45,10 +44,18 @@ class AgentExecutionStatsVO(BaseModel):
 class StatisticsQueryRequest(BaseModel):
     """统计查询请求"""
 
-    granularity: str = Field(default="daily", description="统计粒度: daily/weekly/monthly")
-    time_range: str = Field(default="30d", alias="timeRange", description="时间范围: 7d/30d/90d")
-    start_date: Optional[str] = Field(None, alias="startDate", description="自定义开始日期 YYYY-MM-DD")
-    end_date: Optional[str] = Field(None, alias="endDate", description="自定义结束日期 YYYY-MM-DD")
+    granularity: str = Field(
+        default="daily", description="统计粒度: daily/weekly/monthly"
+    )
+    time_range: str = Field(
+        default="30d", alias="timeRange", description="时间范围: 7d/30d/90d"
+    )
+    start_date: str | None = Field(
+        None, alias="startDate", description="自定义开始日期 YYYY-MM-DD"
+    )
+    end_date: str | None = Field(
+        None, alias="endDate", description="自定义结束日期 YYYY-MM-DD"
+    )
 
     class Config:
         populate_by_name = True
@@ -64,7 +71,7 @@ class CreationTrendItem(BaseModel):
 class CreationTrendVO(BaseModel):
     """创作趋势"""
 
-    items: List[CreationTrendItem] = Field(default_factory=list)
+    items: list[CreationTrendItem] = Field(default_factory=list)
 
 
 class AgentPerformanceItem(BaseModel):
@@ -84,7 +91,7 @@ class AgentPerformanceItem(BaseModel):
 class AgentPerformanceVO(BaseModel):
     """智能体性能"""
 
-    items: List[AgentPerformanceItem] = Field(default_factory=list)
+    items: list[AgentPerformanceItem] = Field(default_factory=list)
 
 
 class UserTrendItem(BaseModel):
@@ -104,7 +111,7 @@ class UserAnalysisVO(BaseModel):
     total_users: int = Field(..., alias="totalUsers")
     total_vip: int = Field(..., alias="totalVip")
     vip_conversion_rate: float = Field(..., alias="vipConversionRate")
-    trends: List[UserTrendItem] = Field(default_factory=list)
+    trends: list[UserTrendItem] = Field(default_factory=list)
 
     class Config:
         populate_by_name = True
@@ -115,7 +122,7 @@ class QuotaUsageItem(BaseModel):
 
     user_id: int = Field(..., alias="userId")
     user_account: str = Field(..., alias="userAccount")
-    user_name: Optional[str] = Field(None, alias="userName")
+    user_name: str | None = Field(None, alias="userName")
     quota_consumed: int = Field(..., alias="quotaConsumed")
     total_articles: int = Field(..., alias="totalArticles")
 
@@ -127,7 +134,7 @@ class QuotaUsageVO(BaseModel):
     """配额使用"""
 
     total_quota_consumed: int = Field(..., alias="totalQuotaConsumed")
-    items: List[QuotaUsageItem] = Field(default_factory=list)
+    items: list[QuotaUsageItem] = Field(default_factory=list)
 
 
 class DashboardStatsVO(BaseModel):

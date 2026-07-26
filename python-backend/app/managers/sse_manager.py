@@ -1,16 +1,17 @@
-import logging
 import asyncio
-from typing import Dict
+import logging
+
 from fastapi.responses import StreamingResponse
 
 logger = logging.getLogger(__name__)
+
 
 class SseEmitterManager:
     """SSE Emitter 管理器"""
 
     def __init__(self):
         # 存储所有的队列，key 为 taskId
-        self._queues: Dict[str, asyncio.Queue] = {}
+        self._queues: dict[str, asyncio.Queue] = {}
 
     def create_emitter(self, task_id: str) -> StreamingResponse:
         """创建 SSE Emitter，返回 StreamingResponse"""

@@ -1,30 +1,30 @@
+"""文章智能体编排服务"""
+
 import json
 import logging
+from collections.abc import Callable
 from contextlib import asynccontextmanager, contextmanager
-
-from openai import AsyncOpenAI
-from typing import Callable, List, Optional
 from datetime import datetime
 
+from openai import AsyncOpenAI
 
+from app.agent.orchestrator import ArticleAgentOrchestrator
+from app.agent.parallel.image_generator import ParallelImageGenerator
 from app.config import settings
+from app.constants.prompt import PromptConstant
 from app.database import database
+from app.models.enums import ArticleStyleEnum, ImageMethodEnum, SseMessageTypeEnum
 from app.schemas.article import (
+    Agent4Result,
     ArticleState,
-    TitleOption,
-    TitleResult,
-    OutlineSection,
-    OutlineResult,
     ImageRequirement,
     ImageResult,
-    Agent4Result,
+    OutlineResult,
+    OutlineSection,
+    TitleOption,
 )
-from app.schemas import ImageRequest
-from app.models.enums import ImageMethodEnum, ArticleStyleEnum, SseMessageTypeEnum
-from app.constants.prompt import PromptConstant
-from app.services.image_service_strategy import ImageServiceStrategy
 from app.services.agent_log_service import AgentLogService
-
+from app.services.image_service_strategy import ImageServiceStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -36,60 +36,259 @@ class ArticleAgentService:
         # 初始化 OpenAI 客户端（DashScope 兼容）
         self.client = AsyncOpenAI(
             api_key=settings.dashscope_api_key,
-            base_url=settings.dashscope_base_url,
+            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
         )
         self.model = settings.dashscope_model
 
+        # 初始化策略模式（第 5 期改动）
         self.image_service_strategy = ImageServiceStrategy()
-
         self.agent_log_service = AgentLogService(database)
+        self.parallel_image_generator = ParallelImageGenerator(
+            image_service_strategy=self.image_service_strategy,
+            max_concurrency=settings.agent_image_max_concurrency,
+            fail_fast=settings.agent_image_fail_fast,
+        )
+        self.orchestrator = ArticleAgentOrchestrator()
 
-    async def execute_article_generation(
+    async def execute_phase1_generate_titles(
         self, state: ArticleState, stream_handler: Callable[[str], None]
     ):
-        """执行完整的文章生成流程"""
+        """
+        阶段1：生成标题方案
+
+        Args:
+            state: 文章状态
+            stream_handler: 流式输出处理器
+        """
         try:
-            # 智能体1：生成标题
-            await self.agent1_generate_title(state)
-            stream_handler(SseMessageTypeEnum.AGENT1_COMPLETE.value)
-
-            # 智能体2：生成大纲（流式输出）
-            await self.agent2_generate_outline(state, stream_handler)
-            stream_handler(SseMessageTypeEnum.AGENT2_COMPLETE.value)
-
-            # 智能体3：生成正文（流式输出）
-            await self.agent3_generate_content(state, stream_handler)
-            stream_handler(SseMessageTypeEnum.AGENT3_COMPLETE.value)
-
-            # 智能体4：分析配图需求
-            await self.agent4_analyze_image_requirements(state)
-            stream_handler(SseMessageTypeEnum.AGENT4_COMPLETE.value)
-
-            # 智能体5：生成配图
-            await self.agent5_generate_images(state, stream_handler)
-            stream_handler(SseMessageTypeEnum.AGENT5_COMPLETE.value)
-
-            # 图文合成：将配图插入正文
-            self.merge_images_into_content(state)
-            stream_handler(SseMessageTypeEnum.MERGE_COMPLETE.value)
+            await self.orchestrator.execute_phase1(self, state, stream_handler)
         except Exception as e:
-            raise RuntimeError(f"文章生成失败: {str(e)}")
+            logger.error(f"阶段1失败, taskId={state.task_id}, error={e}")
+            raise RuntimeError(f"标题方案生成失败: {e!s}")
 
-    async def agent1_generate_title(self, state: ArticleState):
-        """智能体1：生成标题"""
+    async def execute_phase2_generate_outline(
+        self, state: ArticleState, stream_handler: Callable[[str], None]
+    ):
+        """阶段2：生成大纲"""
+        try:
+            await self.orchestrator.execute_phase2(self, state, stream_handler)
+        except Exception as e:
+            logger.error(f"阶段2失败, taskId={state.task_id}, error={e}")
+            raise RuntimeError(f"大纲生成失败: {e!s}")
+
+    async def execute_phase3_generate_content(
+        self, state: ArticleState, stream_handler: Callable[[str], None]
+    ):
+        """阶段3：生成正文、配图和合并内容"""
+        try:
+            await self.orchestrator.execute_phase3(self, state, stream_handler)
+        except Exception as e:
+            logger.error(f"阶段3失败, taskId={state.task_id}, error={e}")
+            raise RuntimeError(f"正文生成失败: {e!s}")
+
+    async def agent1_generate_title_options(self, state: ArticleState):
+        """智能体1：生成标题方案（3-5个）"""
         prompt = PromptConstant.AGENT1_TITLE_PROMPT.replace("{topic}", state.topic)
-        prompt += self._get_style_prompt(state.style)
+        prompt += self._get_style_prompt(state.style)  # 第 5 期新增：风格 Prompt
 
-        content = await self._call_llm(prompt)
-        title_list = self._parse_json_response(content, "标题")
-        # 解析所有标题方案
-        title_options = [TitleOption(**item) for item in title_list]
-        state.title_options = title_options
-        # 取第一个方案作为当前标题
-        state.title = TitleResult(
-            mainTitle=title_options[0].main_title,
-            subTitle=title_options[0].sub_title,
+        async with self._agent_log_context(
+            task_id=state.task_id,
+            agent_name="agent1_generate_titles",
+            prompt=prompt,
+            input_data={"topic": state.topic, "style": state.style},
+        ) as log_data:
+            content = await self._call_llm(prompt)
+            title_options_data = self._parse_json_list_response(content, "标题方案")
+            state.title_options = [TitleOption(**item) for item in title_options_data]
+            log_data["outputData"] = self._safe_json_dumps(
+                {"optionsCount": len(state.title_options)}
+            )
+            logger.info("智能体1：标题方案生成成功, count=%s", len(state.title_options))
+
+    async def agent2_generate_outline(
+        self, state: ArticleState, stream_handler: Callable[[str], None]
+    ):
+        """智能体2：生成大纲（流式输出）"""
+        description_section = ""
+        if state.user_description and state.user_description.strip():
+            description_section = PromptConstant.AGENT2_DESCRIPTION_SECTION.replace(
+                "{userDescription}",
+                state.user_description,
+            )
+
+        prompt = (
+            PromptConstant.AGENT2_OUTLINE_PROMPT.replace(
+                "{mainTitle}", state.title.main_title
+            )
+            .replace("{subTitle}", state.title.sub_title)
+            .replace("{descriptionSection}", description_section)
         )
+        prompt += self._get_style_prompt(state.style)  # 第 5 期新增：风格 Prompt
+
+        async with self._agent_log_context(
+            task_id=state.task_id,
+            agent_name="agent2_generate_outline",
+            prompt=prompt,
+            input_data={
+                "mainTitle": state.title.main_title if state.title else None,
+                "subTitle": state.title.sub_title if state.title else None,
+                "hasUserDescription": bool(
+                    state.user_description and state.user_description.strip()
+                ),
+            },
+        ) as log_data:
+            content = await self._call_llm_with_streaming(
+                prompt, stream_handler, SseMessageTypeEnum.AGENT2_STREAMING
+            )
+            outline_data = self._parse_json_response(content, "大纲")
+            sections = [
+                OutlineSection(**section) for section in outline_data["sections"]
+            ]
+            state.outline = OutlineResult(sections=sections)
+            log_data["outputData"] = self._safe_json_dumps(
+                {"sectionsCount": len(state.outline.sections)}
+            )
+            logger.info(
+                f"智能体2：大纲生成成功, sections={len(state.outline.sections)}"
+            )
+
+    async def agent3_generate_content(
+        self, state: ArticleState, stream_handler: Callable[[str], None]
+    ):
+        """智能体3：生成正文（流式输出）"""
+        outline_text = json.dumps(
+            [section.model_dump() for section in state.outline.sections],
+            ensure_ascii=False,
+        )
+        prompt = (
+            PromptConstant.AGENT3_CONTENT_PROMPT.replace(
+                "{mainTitle}", state.title.main_title
+            )
+            .replace("{subTitle}", state.title.sub_title)
+            .replace("{outline}", outline_text)
+        )
+        prompt += self._get_style_prompt(state.style)  # 第 5 期新增：风格 Prompt
+
+        async with self._agent_log_context(
+            task_id=state.task_id,
+            agent_name="agent3_generate_content",
+            prompt=prompt,
+            input_data={
+                "mainTitle": state.title.main_title if state.title else None,
+                "subTitle": state.title.sub_title if state.title else None,
+                "outlineSections": len(state.outline.sections) if state.outline else 0,
+            },
+        ) as log_data:
+            content = await self._call_llm_with_streaming(
+                prompt, stream_handler, SseMessageTypeEnum.AGENT3_STREAMING
+            )
+            state.content = content
+            log_data["outputData"] = self._safe_json_dumps(
+                {"contentLength": len(content)}
+            )
+            logger.info(f"智能体3：正文生成成功, length={len(content)}")
+
+    async def agent4_analyze_image_requirements(self, state: ArticleState):
+        """智能体4：分析配图需求（第 5 期：占位符方案）"""
+        # 构建可用配图方式说明
+        available_methods = self._build_available_methods_description(
+            state.enabled_image_methods
+        )
+        # 构建各配图方式的详细使用指南
+        method_usage_guide = self._build_method_usage_guide(state.enabled_image_methods)
+
+        prompt = (
+            PromptConstant.AGENT4_IMAGE_REQUIREMENTS_PROMPT.replace(
+                "{mainTitle}", state.title.main_title
+            )
+            .replace("{content}", state.content)
+            .replace("{availableMethods}", available_methods)
+            .replace("{methodUsageGuide}", method_usage_guide)
+        )
+
+        async with self._agent_log_context(
+            task_id=state.task_id,
+            agent_name="agent4_analyze_image_requirements",
+            prompt=prompt,
+            input_data={"enabledImageMethods": state.enabled_image_methods},
+        ) as log_data:
+            content = await self._call_llm(prompt)
+            agent4_data = self._parse_json_response(content, "配图需求")
+            agent4_result = Agent4Result(**agent4_data)
+
+            # 更新正文为包含占位符的版本
+            state.content = self._normalize_placeholder_syntax(
+                agent4_result.content_with_placeholders
+            )
+
+            # 验证并过滤配图需求
+            validated_requirements = self._validate_and_filter_image_requirements(
+                agent4_result.image_requirements, state.enabled_image_methods
+            )
+            for requirement in validated_requirements:
+                requirement.placeholder_id = self._normalize_placeholder_token(
+                    requirement.placeholder_id
+                )
+
+            state.image_requirements = validated_requirements
+            log_data["outputData"] = self._safe_json_dumps(
+                {
+                    "rawRequirementsCount": len(agent4_result.image_requirements),
+                    "validatedRequirementsCount": len(validated_requirements),
+                }
+            )
+            logger.info(
+                f"智能体4：配图需求分析成功, count={len(agent4_result.image_requirements)}, "
+                f"validated={len(validated_requirements)}, 已在正文中插入占位符"
+            )
+
+    async def agent5_generate_images(
+        self, state: ArticleState, stream_handler: Callable[[str], None]
+    ):
+        """智能体5：生成配图（第 5 期：策略模式 + 统一上传 COS）"""
+        async with self._agent_log_context(
+            task_id=state.task_id,
+            agent_name="agent5_generate_images",
+            prompt=PromptConstant.AGENT5_IMAGE_EXECUTION_PROMPT,
+            input_data={"requirementsCount": len(state.image_requirements or [])},
+        ) as log_data:
+            generated_pairs = await self.parallel_image_generator.generate(
+                state.image_requirements or []
+            )
+            image_results = []
+
+            for requirement, result in generated_pairs:
+                image_source = requirement.image_source
+                logger.info(
+                    f"智能体5：开始获取配图, position={requirement.position}, "
+                    f"imageSource={image_source}, keywords={requirement.keywords}"
+                )
+
+                cos_url = result.url
+                method = result.method
+
+                # 创建配图结果（URL 已经是 COS 地址）
+                image_result = self._build_image_result(requirement, cos_url, method)
+                image_results.append(image_result)
+
+                # 推送单张配图完成
+                image_complete_message = (
+                    SseMessageTypeEnum.IMAGE_COMPLETE.get_streaming_prefix()
+                    + image_result.model_dump_json(by_alias=True)
+                )
+                stream_handler(image_complete_message)
+
+                logger.info(
+                    f"智能体5：配图获取并上传成功, position={requirement.position}, "
+                    f"method={method.value}, cosUrl={cos_url}"
+                )
+
+            # 并行执行后按位置排序，确保输出稳定
+            state.images = sorted(image_results, key=lambda item: item.position)
+            log_data["outputData"] = self._safe_json_dumps(
+                {"imagesCount": len(image_results)}
+            )
+            logger.info(f"智能体5：所有配图生成并上传完成, count={len(image_results)}")
 
     def merge_images_into_content(self, state: ArticleState):
         """图文合成：根据占位符将配图插入正文（第 5 期：占位符方案）"""
@@ -110,11 +309,16 @@ class ArticleAgentService:
                 return
 
             full_content = content
+
+            # 遍历所有配图，根据占位符替换为实际图片
             for image in images:
-                placeholder = image.placeholder_id
-                if placeholder:
+                placeholder_candidates = self._build_placeholder_candidates(
+                    image.placeholder_id
+                )
+                if placeholder_candidates:
                     image_markdown = f"![{image.description}]({image.url})"
-                    full_content = full_content.replace(placeholder, image_markdown)
+                    for placeholder in placeholder_candidates:
+                        full_content = full_content.replace(placeholder, image_markdown)
 
             state.full_content = full_content
             log_data["outputData"] = self._safe_json_dumps(
@@ -122,12 +326,14 @@ class ArticleAgentService:
             )
             logger.info(f"图文合成完成, fullContentLength={len(full_content)}")
 
+    # region 辅助方法
+
     async def _call_llm(self, prompt: str) -> str:
         """调用 LLM（非流式）"""
         response = await self.client.chat.completions.create(
             model=self.model, messages=[{"role": "user", "content": prompt}]
         )
-        return response.choices[0].message.content or ""
+        return response.choices[0].message.content
 
     async def _call_llm_with_streaming(
         self,
@@ -145,39 +351,12 @@ class ArticleAgentService:
         )
 
         async for chunk in stream:
-            if chunk.choices and chunk.choices[0].delta.content:
+            if chunk.choices[0].delta.content:
                 content = chunk.choices[0].delta.content
                 content_builder.append(content)
                 stream_handler(message_type.get_streaming_prefix() + content)
 
         return "".join(content_builder)
-
-    def _clean_json_content(self, content: str) -> str:
-        """清理 LLM 返回的 JSON 内容，移除 markdown 代码块等"""
-        content = content.strip()
-        # 移除 markdown 代码块标记
-        if content.startswith("```"):
-            first_newline = content.find("\n")
-            if first_newline != -1:
-                content = content[first_newline + 1 :]
-            if content.endswith("```"):
-                content = content[:-3]
-        # 尝试提取 JSON 对象（找第一个 { 和最后一个 }）
-        obj_start = content.find("{")
-        obj_end = content.rfind("}")
-        # 尝试提取 JSON 数组（找第一个 [ 和最后一个 ]）
-        arr_start = content.find("[")
-        arr_end = content.rfind("]")
-        # 优先提取更靠前的内容（对象或数组）
-        if obj_start != -1 and obj_end != -1 and obj_end > obj_start:
-            if arr_start != -1 and arr_start < obj_start:
-                # 数组在外层，提取数组
-                content = content[arr_start : arr_end + 1]
-            else:
-                content = content[obj_start : obj_end + 1]
-        elif arr_start != -1 and arr_end != -1 and arr_end > arr_start:
-            content = content[arr_start : arr_end + 1]
-        return content.strip()
 
     def _parse_json_response(self, content: str, name: str) -> dict:
         """解析 JSON 响应"""
@@ -194,10 +373,9 @@ class ArticleAgentService:
             raise RuntimeError(f"{name}解析失败")
 
     def _parse_json_list_response(self, content: str, name: str) -> list:
-        """解析 JSON 数组响应，自动清理 markdown 代码块"""
-        cleaned = self._clean_json_content(content)
+        """解析 JSON 数组响应"""
         try:
-            result = json.loads(cleaned)
+            result = json.loads(content)
             if not isinstance(result, list):
                 raise ValueError("响应不是 JSON 数组")
             return result
@@ -219,11 +397,11 @@ class ArticleAgentService:
             keywords=requirement.keywords,
             sectionTitle=requirement.section_title,
             description=requirement.type,
-            placeholderId=requirement.placeholder_id,
+            placeholderId=requirement.placeholder_id,  # 第 5 期新增
         )
 
-    def _get_style_prompt(self, style: Optional[str]) -> str:
-        """根据风格获取对应的 Prompt 附加内容"""
+    def _get_style_prompt(self, style: str | None) -> str:
+        """根据风格获取对应的 Prompt 附加内容（第 5 期新增）"""
         if not style:
             return ""
 
@@ -240,7 +418,7 @@ class ArticleAgentService:
             return ""
 
     def _build_available_methods_description(
-        self, enabled_methods: Optional[List[str]]
+        self, enabled_methods: list[str] | None
     ) -> str:
         """构建可用配图方式说明"""
         # 如果为空或 None，表示支持所有方式
@@ -260,7 +438,28 @@ class ArticleAgentService:
 
         return "\n".join(descriptions)
 
-    def _build_method_usage_guide(self, enabled_methods: Optional[List[str]]) -> str:
+    def _get_all_methods_description(self) -> str:
+        """获取所有配图方式的完整描述"""
+        return """   - PEXELS: 适合真实场景、产品照片、人物照片、自然风景等写实图片
+   - NANO_BANANA: 适合创意插画、信息图表、需要文字渲染、抽象概念、艺术风格等 AI 生成图片
+   - MERMAID: 适合流程图、架构图、时序图、关系图、甘特图等结构化图表
+   - ICONIFY: 适合图标、符号、小型装饰性图标（如：箭头、勾选、星星、心形等）
+   - EMOJI_PACK: 适合表情包、搞笑图片、轻松幽默的配图
+   - SVG_DIAGRAM: 适合概念示意图、思维导图样式、逻辑关系展示（不涉及精确数据）"""
+
+    def _get_method_usage_description(self, method: ImageMethodEnum) -> str:
+        """获取配图方式的使用说明"""
+        descriptions = {
+            ImageMethodEnum.PEXELS: "适合真实场景、产品照片、人物照片、自然风景等写实图片",
+            ImageMethodEnum.NANO_BANANA: "适合创意插画、信息图表、需要文字渲染、抽象概念、艺术风格等 AI 生成图片",
+            ImageMethodEnum.MERMAID: "适合流程图、架构图、时序图、关系图、甘特图等结构化图表",
+            ImageMethodEnum.ICONIFY: "适合图标、符号、小型装饰性图标（如：箭头、勾选、星星、心形等）",
+            ImageMethodEnum.EMOJI_PACK: "适合表情包、搞笑图片、轻松幽默的配图",
+            ImageMethodEnum.SVG_DIAGRAM: "适合概念示意图、思维导图样式、逻辑关系展示（不涉及精确数据）",
+        }
+        return descriptions.get(method, method.value)
+
+    def _build_method_usage_guide(self, enabled_methods: list[str] | None) -> str:
         """构建配图方式的详细使用指南"""
         # 如果没有限制，返回所有方式的使用指南
         methods_to_include = (
@@ -284,9 +483,21 @@ class ArticleAgentService:
 
         return "\n".join(guides)
 
+    def _get_method_detailed_guide(self, method_str: str) -> str:
+        """获取单个配图方式的详细使用指南"""
+        guides = {
+            "PEXELS": "- PEXELS: 提供英文搜索关键词(keywords)，要准确、具体。prompt 留空。",
+            "NANO_BANANA": "- NANO_BANANA: 提供详细的英文生图提示词(prompt)，描述场景、风格、细节。keywords 留空。",
+            "MERMAID": "- MERMAID: 在 prompt 字段生成完整的 Mermaid 代码（如流程图、架构图）。keywords 留空。",
+            "ICONIFY": "- ICONIFY: 提供英文图标关键词(keywords)，如：check、arrow、star、heart。prompt 留空。",
+            "EMOJI_PACK": "- EMOJI_PACK: 提供中文或英文关键词(keywords)描述表情内容。prompt 留空。系统会自动添加'表情包'搜索。",
+            "SVG_DIAGRAM": "- SVG_DIAGRAM: 在 prompt 字段描述示意图需求（中文），说明要表达的概念和关系。keywords 留空。\n  示例：绘制思维导图样式的图，中心是'自律'，周围4个分支：习惯、环境、反馈、系统",
+        }
+        return guides.get(method_str, "")
+
     def _validate_and_filter_image_requirements(
-        self, requirements: List[ImageRequirement], enabled_methods: Optional[List[str]]
-    ) -> List[ImageRequirement]:
+        self, requirements: list[ImageRequirement], enabled_methods: list[str] | None
+    ) -> list[ImageRequirement]:
         """验证并过滤配图需求"""
         # 如果没有限制，返回所有需求
         if not enabled_methods:
@@ -321,294 +532,14 @@ class ArticleAgentService:
 
         return validated_requirements
 
-    def _get_all_methods_description(self) -> str:
-        """获取所有配图方式的完整描述"""
-        return """   - PEXELS: 适合真实场景、产品照片、人物照片、自然风景等写实图片
-    - NANO_BANANA: 适合创意插画、信息图表、需要文字渲染、抽象概念、艺术风格等 AI 生成图片
-    - MERMAID: 适合流程图、架构图、时序图、关系图、甘特图等结构化图表
-    - ICONIFY: 适合图标、符号、小型装饰性图标（如：箭头、勾选、星星、心形等）
-    - EMOJI_PACK: 适合表情包、搞笑图片、轻松幽默的配图
-    - SVG_DIAGRAM: 适合概念示意图、思维导图样式、逻辑关系展示（不涉及精确数据）"""
-
-    def _get_method_usage_description(self, method: ImageMethodEnum) -> str:
-        """获取配图方式的使用说明"""
-        descriptions = {
-            ImageMethodEnum.PEXELS: "适合真实场景、产品照片、人物照片、自然风景等写实图片",
-            ImageMethodEnum.NANO_BANANA: "适合创意插画、信息图表、需要文字渲染、抽象概念、艺术风格等 AI 生成图片",
-            ImageMethodEnum.MERMAID: "适合流程图、架构图、时序图、关系图、甘特图等结构化图表",
-            ImageMethodEnum.ICONIFY: "适合图标、符号、小型装饰性图标（如：箭头、勾选、星星、心形等）",
-            ImageMethodEnum.EMOJI_PACK: "适合表情包、搞笑图片、轻松幽默的配图",
-            ImageMethodEnum.SVG_DIAGRAM: "适合概念示意图、思维导图样式、逻辑关系展示（不涉及精确数据）",
-        }
-        return descriptions.get(method, method.value)
-
-    def _get_method_detailed_guide(self, method_str: str) -> str:
-        """获取单个配图方式的详细使用指南"""
-        guides = {
-            "PEXELS": "- PEXELS: 提供英文搜索关键词(keywords)，要准确、具体。prompt 留空。",
-            "NANO_BANANA": "- NANO_BANANA: 提供详细的英文生图提示词(prompt)，描述场景、风格、细节。keywords 留空。",
-            "MERMAID": "- MERMAID: 在 prompt 字段生成完整的 Mermaid 代码（如流程图、架构图）。keywords 留空。",
-            "ICONIFY": "- ICONIFY: 提供英文图标关键词(keywords)，如：check、arrow、star、heart。prompt 留空。",
-            "EMOJI_PACK": "- EMOJI_PACK: 提供中文或英文关键词(keywords)描述表情内容。prompt 留空。系统会自动添加'表情包'搜索。",
-            "SVG_DIAGRAM": "- SVG_DIAGRAM: 在 prompt 字段描述示意图需求（中文），说明要表达的概念和关系。keywords 留空。\n  示例：绘制思维导图样式的图，中心是'自律'，周围4个分支：习惯、环境、反馈、系统",
-        }
-        return guides.get(method_str, "")
-
-    async def execute_phase1_generate_titles(
-        self, state: ArticleState, stream_handler: Callable[[str], None]
-    ):
-        """
-        阶段1：生成标题方案
-
-        Args:
-            state: 文章状态
-            stream_handler: 流式输出处理器
-        """
-        try:
-            logger.info(f"阶段1：开始生成标题方案, taskId={state.task_id}")
-            await self.agent1_generate_title_options(state)
-            stream_handler(SseMessageTypeEnum.AGENT1_COMPLETE.value)
-            logger.info(
-                "阶段1：标题方案生成成功, taskId=%s, optionsCount=%s",
-                state.task_id,
-                len(state.title_options or []),
-            )
-        except Exception as e:
-            logger.error(f"阶段1失败, taskId={state.task_id}, error={e}")
-            raise RuntimeError(f"标题方案生成失败: {str(e)}")
-
-    async def execute_phase2_generate_outline(
-        self, state: ArticleState, stream_handler: Callable[[str], None]
-    ):
-        """阶段2：生成大纲"""
-        try:
-            logger.info(f"阶段2：开始生成大纲, taskId={state.task_id}")
-            await self.agent2_generate_outline(state, stream_handler)
-            stream_handler(SseMessageTypeEnum.AGENT2_COMPLETE.value)
-            logger.info(f"阶段2：大纲生成成功, taskId={state.task_id}")
-        except Exception as e:
-            logger.error(f"阶段2失败, taskId={state.task_id}, error={e}")
-            raise RuntimeError(f"大纲生成失败: {str(e)}")
-
-    async def execute_phase3_generate_content(
-        self, state: ArticleState, stream_handler: Callable[[str], None]
-    ):
-        """阶段3：生成正文、配图和合并内容"""
-        try:
-            logger.info(f"阶段3：开始生成正文, taskId={state.task_id}")
-            await self.agent3_generate_content(state, stream_handler)
-            stream_handler(SseMessageTypeEnum.AGENT3_COMPLETE.value)
-
-            logger.info(f"阶段3：开始分析配图需求, taskId={state.task_id}")
-            await self.agent4_analyze_image_requirements(state)
-            stream_handler(SseMessageTypeEnum.AGENT4_COMPLETE.value)
-
-            logger.info(f"阶段3：开始生成配图, taskId={state.task_id}")
-            await self.agent5_generate_images(state, stream_handler)
-            stream_handler(SseMessageTypeEnum.AGENT5_COMPLETE.value)
-
-            logger.info(f"阶段3：开始图文合成, taskId={state.task_id}")
-            self.merge_images_into_content(state)
-            stream_handler(SseMessageTypeEnum.MERGE_COMPLETE.value)
-        except Exception as e:
-            logger.error(f"阶段3失败, taskId={state.task_id}, error={e}")
-            raise RuntimeError(f"正文生成失败: {str(e)}")
-
-    async def agent1_generate_title_options(self, state: ArticleState):
-        """智能体1：生成标题方案（3-5个）"""
-        prompt = PromptConstant.AGENT1_TITLE_PROMPT.replace("{topic}", state.topic)
-        prompt += self._get_style_prompt(state.style)
-
-        async with self._agent_log_context(
-            task_id=state.task_id,
-            agent_name="agent1_generate_titles",
-            prompt=prompt,
-            input_data={"topic": state.topic, "style": state.style},
-        ) as log_data:
-            content = await self._call_llm(prompt)
-            title_options_data = self._parse_json_list_response(content, "标题方案")
-            state.title_options = [TitleOption(**item) for item in title_options_data]
-            log_data["outputData"] = self._safe_json_dumps(
-                {"optionsCount": len(state.title_options)}
-            )
-            logger.info("智能体1：标题方案生成成功, count=%s", len(state.title_options))
-
-    async def agent2_generate_outline(
-        self, state: ArticleState, stream_handler: Callable[[str], None]
-    ):
-        """智能体2：生成大纲（流式输出）"""
-        description_section = ""
-        if state.user_description and state.user_description.strip():
-            description_section = PromptConstant.AGENT2_DESCRIPTION_SECTION.replace(
-                "{userDescription}",
-                state.user_description,
-            )
-
-        prompt = (
-            PromptConstant.AGENT2_OUTLINE_PROMPT.replace(
-                "{mainTitle}", state.title.main_title
-            )
-            .replace("{subTitle}", state.title.sub_title)
-            .replace("{descriptionSection}", description_section)
-        )
-        prompt += self._get_style_prompt(state.style)
-
-        async with self._agent_log_context(
-            task_id=state.task_id,
-            agent_name="agent2_generate_outline",
-            prompt=prompt,
-            input_data={"topic": state.topic, "style": state.style},
-        ) as log_data:
-            content = await self._call_llm_with_streaming(
-                prompt, stream_handler, SseMessageTypeEnum.AGENT2_STREAMING
-            )
-            outline_data = self._parse_json_response(content, "大纲")
-            sections = [
-                OutlineSection(**section) for section in outline_data["sections"]
-            ]
-            state.outline = OutlineResult(sections=sections)
-            log_data["outputData"] = self._safe_json_dumps(
-                {"sectionsCount": len(state.outline.sections)}
-            )
-            logger.info(
-                f"智能体2：大纲生成成功, sections={len(state.outline.sections)}"
-            )
-
-    async def agent3_generate_content(
-        self, state: ArticleState, stream_handler: Callable[[str], None]
-    ):
-        """智能体3：生成正文（流式输出）"""
-        outline_text = json.dumps(
-            [section.model_dump() for section in state.outline.sections],
-            ensure_ascii=False,
-        )
-        prompt = (
-            PromptConstant.AGENT3_CONTENT_PROMPT.replace(
-                "{mainTitle}", state.title.main_title
-            )
-            .replace("{subTitle}", state.title.sub_title)
-            .replace("{outline}", outline_text)
-        )
-
-        prompt += self._get_style_prompt(state.style)
-
-        async with self._agent_log_context(
-            task_id=state.task_id,
-            agent_name="agent3_generate_content",
-            prompt=prompt,
-            input_data={
-                "mainTitle": state.title.main_title if state.title else None,
-                "subTitle": state.title.sub_title if state.title else None,
-                "outlineSections": len(state.outline.sections) if state.outline else 0,
-            },
-        ) as log_data:
-            content = await self._call_llm_with_streaming(
-                prompt, stream_handler, SseMessageTypeEnum.AGENT3_STREAMING
-            )
-            state.content = content
-            log_data["outputData"] = self._safe_json_dumps(
-                {"contentLength": len(content)}
-            )
-            logger.info(f"智能体3：正文生成成功, length={len(content)}")
-
-    async def agent4_analyze_image_requirements(self, state: ArticleState):
-        """智能体4：分析配图需求（占位符方案）"""
-        available_methods = self._build_available_methods_description(
-            state.enabled_image_methods
-        )
-        method_usage_guide = self._build_method_usage_guide(state.enabled_image_methods)
-
-        prompt = (
-            PromptConstant.AGENT4_IMAGE_REQUIREMENTS_PROMPT.replace(
-                "{mainTitle}", state.title.main_title
-            )
-            .replace("{content}", state.content)
-            .replace("{availableMethods}", available_methods)
-            .replace("{methodUsageGuide}", method_usage_guide)
-        )
-
-        async with self._agent_log_context(
-            task_id=state.task_id,
-            agent_name="agent4_analyze_image_requirements",
-            prompt=prompt,
-            input_data={"enabledImageMethods": state.enabled_image_methods},
-        ) as log_data:
-            content = await self._call_llm(prompt)
-            agent4_data = self._parse_json_response(content, "配图需求")
-            agent4_result = Agent4Result(**agent4_data)
-
-            # 更新正文为包含占位符的版本
-            state.content = self._normalize_placeholder_syntax(
-                agent4_result.content_with_placeholders
-            )
-
-            # 验证并过滤配图需求
-            validated_requirements = self._validate_and_filter_image_requirements(
-                agent4_result.image_requirements, state.enabled_image_methods
-            )
-
-            for requirement in validated_requirements:
-                requirement.placeholder_id = self._normalize_placeholder_token(
-                    requirement.placeholder_id
-                )
-
-            state.image_requirements = validated_requirements
-            log_data["outputData"] = self._safe_json_dumps(
-                {
-                    "rawRequirementsCount": len(agent4_result.image_requirements),
-                    "validatedRequirementsCount": len(validated_requirements),
-                }
-            )
-            logger.info(
-                f"智能体4：配图需求分析成功, count={len(agent4_result.image_requirements)}, "
-                f"validated={len(validated_requirements)}, 已在正文中插入占位符"
-            )
-
-    async def agent5_generate_images(self, state: ArticleState, stream_handler):
-        async with self._agent_log_context(
-            task_id=state.task_id,
-            agent_name="agent5_generate_images",
-            prompt=PromptConstant.AGENT5_IMAGE_EXECUTION_PROMPT,
-            input_data={"requirementsCount": len(state.image_requirements or [])},
-        ) as log_data:
-            """智能体5：生成配图（策略模式 + 统一上传 COS）"""
-            image_results = []
-
-            for requirement in state.image_requirements:
-                image_request = ImageRequest(
-                    keywords=requirement.keywords,
-                    prompt=requirement.prompt,
-                    position=requirement.position,
-                    type=requirement.type,
-                )
-
-                result = await self.image_service_strategy.get_image_and_upload(
-                    requirement.image_source, image_request
-                )
-
-                image_result = self._build_image_result(
-                    requirement, result.url, result.method
-                )
-                image_results.append(image_result)
-                stream_handler(
-                    SseMessageTypeEnum.IMAGE_COMPLETE.get_streaming_prefix()
-                    + image_result.model_dump_json(by_alias=True)
-                )
-
-            state.images = image_results
-            log_data["outputData"] = self._safe_json_dumps(
-                {"imagesCount": len(image_results)}
-            )
-            logger.info(f"智能体5：所有配图生成并上传完成, count={len(image_results)}")
-
     async def ai_modify_outline(
         self,
-        task_id: str,
+        task_id: str | None,
         main_title: str,
         sub_title: str,
-        current_outline: List[OutlineSection],
+        current_outline: list[OutlineSection],
         modify_suggestion: str,
-    ) -> List[OutlineSection]:
+    ) -> list[OutlineSection]:
         """AI 修改大纲"""
         current_outline_json = json.dumps(
             [item.model_dump() for item in current_outline],
@@ -621,7 +552,7 @@ class ArticleAgentService:
             .replace("{modifySuggestion}", modify_suggestion)
         )
         async with self._agent_log_context(
-            task_id=task_id,
+            task_id=task_id or "unknown",
             agent_name="ai_modify_outline",
             prompt=prompt,
             input_data={
@@ -635,7 +566,6 @@ class ArticleAgentService:
             sections = [
                 OutlineSection(**section) for section in outline_data["sections"]
             ]
-
             log_data["outputData"] = self._safe_json_dumps(
                 {"sectionsCount": len(sections)}
             )
@@ -644,10 +574,10 @@ class ArticleAgentService:
     @asynccontextmanager
     async def _agent_log_context(
         self,
-        task_id: Optional[str],
+        task_id: str | None,
         agent_name: str,
-        prompt: Optional[str] = None,
-        input_data: Optional[dict] = None,
+        prompt: str | None = None,
+        input_data: dict | None = None,
     ):
         """异步智能体日志上下文"""
         start_time = datetime.now()
@@ -678,10 +608,10 @@ class ArticleAgentService:
     @contextmanager
     def _agent_log_context_sync(
         self,
-        task_id: Optional[str],
+        task_id: str | None,
         agent_name: str,
-        prompt: Optional[str] = None,
-        input_data: Optional[dict] = None,
+        prompt: str | None = None,
+        input_data: dict | None = None,
     ):
         """同步智能体日志上下文"""
         start_time = datetime.now()
@@ -710,7 +640,7 @@ class ArticleAgentService:
             self.agent_log_service.save_log_async(log_data)
 
     @staticmethod
-    def _safe_json_dumps(value: Optional[dict]) -> Optional[str]:
+    def _safe_json_dumps(value: dict | None) -> str | None:
         """安全序列化 JSON"""
         if value is None:
             return None
@@ -720,7 +650,7 @@ class ArticleAgentService:
             return None
 
     @staticmethod
-    def _normalize_placeholder_token(token: Optional[str]) -> Optional[str]:
+    def _normalize_placeholder_token(token: str | None) -> str | None:
         """将占位符归一化为双层花括号格式：{{PLACEHOLDER}}"""
         if not token:
             return token
@@ -730,7 +660,7 @@ class ArticleAgentService:
             return f"{{{{{inner}}}}}"
         return token
 
-    def _build_placeholder_candidates(self, token: Optional[str]) -> List[str]:
+    def _build_placeholder_candidates(self, token: str | None) -> list[str]:
         """构建占位符候选（兼容双层和四层）"""
         normalized = self._normalize_placeholder_token(token)
         if not normalized:
@@ -745,7 +675,7 @@ class ArticleAgentService:
                 unique_candidates.append(item)
         return unique_candidates
 
-    def _normalize_placeholder_syntax(self, content: Optional[str]) -> Optional[str]:
+    def _normalize_placeholder_syntax(self, content: str | None) -> str | None:
         """将正文中的四层占位符降级为双层，避免替换残留花括号"""
         if not content:
             return content
@@ -760,3 +690,5 @@ class ArticleAgentService:
                 icon_four, icon_two
             )
         return content
+
+    # endregion

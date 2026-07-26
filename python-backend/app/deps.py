@@ -1,24 +1,24 @@
 """依赖注入"""
 
 import uuid
-from typing import Optional
-from fastapi import Cookie, Depends, HTTPException, status
 
-from app.exceptions import ErrorCode, BusinessException
+from fastapi import Cookie, Depends
+
+from app.exceptions import BusinessException, ErrorCode
 from app.schemas.user import LoginUserVO
 from app.utils.session import get_session
 
 
 async def get_session_id(
-    session_id: Optional[str] = Cookie(None, alias="SESSION"),
-) -> Optional[str]:
+    session_id: str | None = Cookie(None, alias="SESSION"),
+) -> str | None:
     """从 Cookie 中获取 Session ID"""
     return session_id
 
 
 async def get_current_user(
-    session_id: Optional[str] = Depends(get_session_id),
-) -> Optional[LoginUserVO]:
+    session_id: str | None = Depends(get_session_id),
+) -> LoginUserVO | None:
     """获取当前登录用户（可选）"""
     if not session_id:
         return None
@@ -32,7 +32,7 @@ async def get_current_user(
 
 
 async def require_login(
-    current_user: Optional[LoginUserVO] = Depends(get_current_user),
+    current_user: LoginUserVO | None = Depends(get_current_user),
 ) -> LoginUserVO:
     """要求必须登录"""
     if not current_user:

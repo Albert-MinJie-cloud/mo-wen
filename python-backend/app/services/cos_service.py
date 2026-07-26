@@ -1,14 +1,14 @@
 """腾讯云 COS 服务"""
 
 import logging
-import httpx
 import uuid
-from typing import Optional
-from qcloud_cos import CosConfig, CosS3Client
 from io import BytesIO
 
+import httpx
+from qcloud_cos import CosConfig, CosS3Client
+
 from app.config import settings
-from app.schemas.image import ImageData, DataType
+from app.schemas.image import DataType, ImageData
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +68,7 @@ class CosService:
             logger.error(f"上传图片到 COS 失败: {e}")
             return image_url  # 降级：直接返回原始 URL
 
-    async def upload_image_data(
-        self, image_data: ImageData, folder: str
-    ) -> Optional[str]:
+    async def upload_image_data(self, image_data: ImageData, folder: str) -> str | None:
         """
         上传图片数据到 COS
         支持多种数据格式：字节数据、URL、data URL

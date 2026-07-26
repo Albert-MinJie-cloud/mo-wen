@@ -2,14 +2,14 @@
 
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
-from app.schemas.article import ArticleState, OutlineSection, OutlineResult, TitleResult
+from app.database import database
+from app.managers.sse_manager import sse_emitter_manager
 from app.models.enums import ArticlePhaseEnum, ArticleStatusEnum, SseMessageTypeEnum
+from app.schemas.article import ArticleState, OutlineResult, OutlineSection, TitleResult
 from app.services.article_agent_service import ArticleAgentService
 from app.services.article_service import ArticleService
-from app.managers.sse_manager import sse_emitter_manager
-from app.database import database
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class ArticleAsyncService:
         self,
         task_id: str,
         topic: str,
-        style: Optional[str] = None,
+        style: str | None = None,
     ):
         """阶段1：异步生成标题方案"""
         logger.info(
@@ -65,7 +65,7 @@ class ArticleAsyncService:
             )
 
             logger.info("阶段1异步任务完成, taskId=%s", task_id)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error("阶段1异步任务失败, taskId=%s, error=%s", task_id, e)
             await article_service.update_article_status(
                 task_id, ArticleStatusEnum.FAILED, str(e)
@@ -185,7 +185,7 @@ class ArticleAsyncService:
         if data is not None:
             sse_emitter_manager.send(task_id, json.dumps(data, ensure_ascii=False))
 
-    def _build_message_data(self, message: str, state: ArticleState) -> Dict[str, Any]:
+    def _build_message_data(self, message: str, state: ArticleState) -> dict[str, Any]:
         """构建消息数据"""
         # 处理流式消息（带冒号分隔符）
         streaming_prefix2 = SseMessageTypeEnum.AGENT2_STREAMING.get_streaming_prefix()
@@ -211,11 +211,11 @@ class ArticleAsyncService:
 
     def _build_streaming_data(
         self, type_enum: SseMessageTypeEnum, content: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """构建流式输出数据"""
         return {"type": type_enum.value, "content": content}
 
-    def _build_image_complete_data(self, image_json: str) -> Dict[str, Any]:
+    def _build_image_complete_data(self, image_json: str) -> dict[str, Any]:
         """构建图片完成数据"""
         return {
             "type": SseMessageTypeEnum.IMAGE_COMPLETE.value,
@@ -224,7 +224,7 @@ class ArticleAsyncService:
 
     def _build_complete_message_data(
         self, message: str, state: ArticleState
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """构建完成消息数据"""
         data = {}
 
@@ -268,7 +268,7 @@ class ArticleAsyncService:
         self,
         task_id: str,
         type_enum: SseMessageTypeEnum,
-        additional_data: Dict[str, Any],
+        additional_data: dict[str, Any],
     ):
         """发送 SSE 消息"""
         data = {"type": type_enum.value}
