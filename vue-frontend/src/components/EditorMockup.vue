@@ -29,9 +29,7 @@
 
               <div class="config-group">
                 <label class="config-label">爆款风格</label>
-                <div class="config-option">
-                  强烈共鸣 / 痛点挖掘
-                </div>
+                <div class="config-option">强烈共鸣 / 痛点挖掘</div>
               </div>
 
               <div class="config-group">

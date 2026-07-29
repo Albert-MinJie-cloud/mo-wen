@@ -40,7 +40,7 @@ class ArticleAgentService:
         )
         self.model = settings.dashscope_model
 
-        # 初始化策略模式（第 5 期改动）
+        # 初始化策略模式
         self.image_service_strategy = ImageServiceStrategy()
         self.agent_log_service = AgentLogService(database)
         self.parallel_image_generator = ParallelImageGenerator(
@@ -89,7 +89,7 @@ class ArticleAgentService:
     async def agent1_generate_title_options(self, state: ArticleState):
         """智能体1：生成标题方案（3-5个）"""
         prompt = PromptConstant.AGENT1_TITLE_PROMPT.replace("{topic}", state.topic)
-        prompt += self._get_style_prompt(state.style)  # 第 5 期新增：风格 Prompt
+        prompt += self._get_style_prompt(state.style)  # 风格 Prompt
 
         async with self._agent_log_context(
             task_id=state.task_id,
@@ -123,7 +123,7 @@ class ArticleAgentService:
             .replace("{subTitle}", state.title.sub_title)
             .replace("{descriptionSection}", description_section)
         )
-        prompt += self._get_style_prompt(state.style)  # 第 5 期新增：风格 Prompt
+        prompt += self._get_style_prompt(state.style)  # 风格 Prompt
 
         async with self._agent_log_context(
             task_id=state.task_id,
@@ -167,7 +167,7 @@ class ArticleAgentService:
             .replace("{subTitle}", state.title.sub_title)
             .replace("{outline}", outline_text)
         )
-        prompt += self._get_style_prompt(state.style)  # 第 5 期新增：风格 Prompt
+        prompt += self._get_style_prompt(state.style)  # 风格 Prompt
 
         async with self._agent_log_context(
             task_id=state.task_id,
@@ -189,7 +189,7 @@ class ArticleAgentService:
             logger.info(f"智能体3：正文生成成功, length={len(content)}")
 
     async def agent4_analyze_image_requirements(self, state: ArticleState):
-        """智能体4：分析配图需求（第 5 期：占位符方案）"""
+        """智能体4：分析配图"""
         # 构建可用配图方式说明
         available_methods = self._build_available_methods_description(
             state.enabled_image_methods
@@ -245,7 +245,7 @@ class ArticleAgentService:
     async def agent5_generate_images(
         self, state: ArticleState, stream_handler: Callable[[str], None]
     ):
-        """智能体5：生成配图（第 5 期：策略模式 + 统一上传 COS）"""
+        """智能体5：生成配图"""
         async with self._agent_log_context(
             task_id=state.task_id,
             agent_name="agent5_generate_images",
@@ -291,7 +291,7 @@ class ArticleAgentService:
             logger.info(f"智能体5：所有配图生成并上传完成, count={len(image_results)}")
 
     def merge_images_into_content(self, state: ArticleState):
-        """图文合成：根据占位符将配图插入正文（第 5 期：占位符方案）"""
+        """图文合成：根据占位符将配图插入正文"""
         with self._agent_log_context_sync(
             task_id=state.task_id,
             agent_name="agent6_merge_content",
@@ -397,11 +397,11 @@ class ArticleAgentService:
             keywords=requirement.keywords,
             sectionTitle=requirement.section_title,
             description=requirement.type,
-            placeholderId=requirement.placeholder_id,  # 第 5 期新增
+            placeholderId=requirement.placeholder_id,
         )
 
     def _get_style_prompt(self, style: str | None) -> str:
-        """根据风格获取对应的 Prompt 附加内容（第 5 期新增）"""
+        """根据风格获取对应的 Prompt 附加内容"""
         if not style:
             return ""
 
@@ -520,7 +520,7 @@ class ArticleAgentService:
                     f"imageSource={image_source}, enabledMethods={enabled_methods}"
                 )
 
-                # 尝试替换为允许的方式（优先使用第一个允许的方式）
+                # 尝试替换为允许的方式
                 if enabled_methods:
                     fallback_source = enabled_methods[0]
                     req.image_source = fallback_source
