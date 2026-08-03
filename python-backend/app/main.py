@@ -1,5 +1,6 @@
 # FastAPI 主应用入口
 
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -14,9 +15,11 @@ from app.routers import (
     health_router,
     payment_router,
     statistics_router,
+    topic_router,
     user_router,
     webhook_router,
 )
+from app.services.hot_topic_service import HotTopicService
 from app.utils.session import close_redis, init_redis
 
 
@@ -29,10 +32,15 @@ async def lifespan(app: FastAPI):
     print(f"数据库连接成功：{settings.database_url}")
     print(f"Redis连接成功：{settings.redis_url}")
 
+    # 启动热门选题定时刷新任务
+    hot_topic_service = HotTopicService()
+    scheduler_task = asyncio.create_task(hot_topic_service.start_scheduler())
+
     # 使用yield分隔启动和关闭逻辑
     yield
 
     # 应用关闭时执行的代码
+    scheduler_task.cancel()
     await database.disconnect()
     await close_redis()
     print("应用已关闭")
@@ -90,3 +98,4 @@ app.include_router(article_router, prefix="/api")
 app.include_router(payment_router, prefix="/api")
 app.include_router(webhook_router, prefix="/api")
 app.include_router(statistics_router, prefix="/api")
+app.include_router(topic_router, prefix="/api")

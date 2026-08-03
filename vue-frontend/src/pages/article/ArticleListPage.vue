@@ -8,6 +8,7 @@ import {
 } from "@/api/article";
 import { message } from "@/message";
 import Button from "@/components/Button.vue";
+import PageHeader from "@/components/PageHeader.vue";
 import DataList from "@/components/DataList.vue";
 import { formatTime } from "@/utils/format";
 import { ARTICLE_STATUS_MAP } from "@/utils/article";
@@ -140,15 +141,13 @@ onMounted(() => {
   <div id="articleListPage">
     <div class="container">
       <!-- 头部 -->
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">文章列表</h1>
-          <p class="page-subtitle">管理您创作的所有文章</p>
-        </div>
-        <Button variant="gradient" size="lg" @click="goToCreate">
-          <PlusOutlined /> 创作新文章
-        </Button>
-      </div>
+      <PageHeader title="文章列表" subtitle="管理您创作的所有文章">
+        <template #extra>
+          <Button variant="gradient" size="lg" @click="goToCreate">
+            <PlusOutlined /> 创作新文章
+          </Button>
+        </template>
+      </PageHeader>
 
       <!-- 搜索栏 -->
       <div class="toolbar">
@@ -270,28 +269,6 @@ onMounted(() => {
 .container {
   max-width: 960px;
   margin: 0 auto;
-}
-
-/* 头部 */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--color-text);
-  margin: 0 0 4px;
-  letter-spacing: -0.5px;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: var(--color-text-secondary);
-  margin: 0;
 }
 
 /* 工具栏 */

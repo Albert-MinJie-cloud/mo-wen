@@ -15,6 +15,7 @@ from app.schemas.article import (
     TitleResult,
 )
 from app.schemas.common import BaseResponse, DeleteRequest, PageRequest
+from app.schemas.hot_topic import HotTopicResponse, HotTopicVO
 from app.schemas.image import ImageData, ImageRequest
 from app.schemas.payment import (
     CreatePaymentSessionRequest,
@@ -64,6 +65,8 @@ __all__ = [
     "CreationTrendVO",
     "DashboardStatsVO",
     "DeleteRequest",
+    "HotTopicResponse",
+    "HotTopicVO",
     "ImageData",
     "ImageRequest",
     "ImageRequirement",

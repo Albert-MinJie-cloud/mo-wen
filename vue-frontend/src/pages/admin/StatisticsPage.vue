@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
 import { message } from "@/message";
+import PageHeader from "@/components/PageHeader.vue";
 import { useTheme } from "@/composables/useTheme";
 import request from "@/request";
 import VChart from "vue-echarts";
@@ -338,15 +339,7 @@ onMounted(() => fetchStats());
 
 <template>
   <div id="statisticsPage">
-    <!-- 页面头部 -->
-    <div class="page-header">
-      <div class="header-container">
-        <div class="header-content">
-          <h1 class="page-title">数据统计</h1>
-          <p class="page-subtitle">AI 文章创作数据分析</p>
-        </div>
-      </div>
-    </div>
+    <PageHeader title="数据统计" subtitle="AI 文章创作数据分析" />
 
     <div class="container">
       <a-card :bordered="false" class="content-card">
@@ -450,33 +443,6 @@ onMounted(() => fetchStats());
   min-height: 100vh;
 }
 
-.page-header {
-  background: var(--gradient-hero);
-  padding: 32px 20px;
-  margin-bottom: 24px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.header-container {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.header-content {
-  .page-title {
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--color-text);
-    margin: 0 0 6px;
-    letter-spacing: -0.3px;
-  }
-  .page-subtitle {
-    font-size: 14px;
-    color: var(--color-text-secondary);
-    margin: 0;
-  }
-}
-
 .container {
   max-width: 1200px;
   margin: 0 auto;
@@ -488,6 +454,7 @@ onMounted(() => fetchStats());
   border: 1px solid var(--color-border);
   box-shadow: none;
   background: var(--color-background-secondary);
+  overflow: hidden;
 
   :deep(.ant-card-body) {
     background: var(--color-background-secondary);
@@ -632,9 +599,6 @@ onMounted(() => fetchStats());
 @media (max-width: 768px) {
   .charts-grid {
     grid-template-columns: 1fr;
-  }
-  .page-header {
-    padding: 24px 20px;
   }
 }
 </style>

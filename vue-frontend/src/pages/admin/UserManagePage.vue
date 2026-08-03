@@ -1,14 +1,6 @@
 <template>
   <div id="userManagePage">
-    <!-- 页面头部 -->
-    <div class="page-header">
-      <div class="header-container">
-        <div class="header-content">
-          <h1 class="page-title">用户管理</h1>
-          <p class="page-subtitle">管理系统中的所有用户</p>
-        </div>
-      </div>
-    </div>
+    <PageHeader title="用户管理" subtitle="管理系统中的所有用户" />
 
     <div class="container">
       <a-card :bordered="false" class="content-card">
@@ -35,7 +27,7 @@
               />
             </a-form-item>
             <a-form-item>
-              <Button variant="gradient" native-type="submit" size="md">
+              <Button variant="secondary" native-type="submit" size="sm">
                 <SearchOutlined />
                 搜索
               </Button>
@@ -98,6 +90,7 @@ import { deleteUserApiUserDeletePost, listUsersByPageApiUserListPagePost } from 
 import { message } from "@/message";
 import { SearchOutlined } from "@ant-design/icons-vue";
 import Button from "@/components/Button.vue";
+import PageHeader from "@/components/PageHeader.vue";
 import { formatTime } from "@/utils/format";
 
 const columns = [
@@ -116,10 +109,6 @@ const columns = [
   {
     title: "头像",
     dataIndex: "userAvatar",
-  },
-  {
-    title: "简介",
-    dataIndex: "userProfile",
   },
   {
     title: "用户角色",
@@ -210,34 +199,6 @@ onMounted(() => {
   min-height: 100vh;
   padding-bottom: 60px;
 
-  .page-header {
-    margin-bottom: 24px;
-  }
-
-  .header-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 32px 20px;
-  }
-
-  .header-content {
-    color: var(--color-text);
-  }
-
-  .page-title {
-    font-size: 28px;
-    font-weight: 700;
-    margin: 0 0 6px;
-    letter-spacing: -0.5px;
-    color: var(--color-text);
-  }
-
-  .page-subtitle {
-    font-size: 14px;
-    color: var(--color-text-secondary);
-    margin: 0;
-  }
-
   .container {
     max-width: 1200px;
     margin: 0 auto;
@@ -247,13 +208,13 @@ onMounted(() => {
   .content-card {
     border-radius: var(--radius-lg);
     border: 1px solid var(--color-border);
-    box-shadow: none;
-    background: var(--color-background-tertiary);
+    box-shadow: var(--shadow-sm);
+    background: var(--color-background);
     overflow: hidden;
 
     :deep(.ant-card-body) {
       padding: 24px;
-      background: var(--color-background-tertiary);
+      background: var(--color-background);
     }
   }
 
@@ -312,16 +273,15 @@ onMounted(() => {
     :deep(.ant-table-content),
     :deep(.ant-table-body) {
       background: transparent;
-      border-collapse: collapse;
     }
 
     :deep(.ant-table-thead > tr > th) {
       background: var(--color-background-secondary);
       font-weight: 600;
       font-size: 13px;
-      color: var(--color-text-secondary);
-      border: none !important;
-      padding: 14px 16px;
+      color: var(--color-text);
+      border-bottom: 1px solid var(--color-border) !important;
+      padding: 12px 16px;
 
       &::before {
         display: none !important;
@@ -329,25 +289,19 @@ onMounted(() => {
     }
 
     :deep(.ant-table-cell) {
-      border: none !important;
       box-shadow: none !important;
     }
 
     :deep(.ant-table-tbody > tr > td) {
-      padding: 16px;
+      padding: 14px 16px;
       border: none !important;
-      box-shadow: none !important;
       color: var(--color-text);
       background: transparent;
-    }
-
-    :deep(.ant-table-tbody > tr) {
-      border: none !important;
-      background: transparent;
+      transition: background 0.15s ease;
     }
 
     :deep(.ant-table-tbody > tr:hover > td) {
-      background: var(--color-fill-tertiary) !important;
+      background: rgba(59, 130, 246, 0.04) !important;
     }
 
     // 分页
@@ -430,14 +384,6 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   #userManagePage {
-    .page-header {
-      padding: 24px 20px;
-    }
-
-    .page-title {
-      font-size: 22px;
-    }
-
     .search-form {
       flex-direction: column;
       align-items: stretch;

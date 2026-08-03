@@ -4,6 +4,7 @@ from app.services.article_async_service import ArticleAsyncService
 from app.services.article_service import ArticleService
 from app.services.cos_service import CosService
 from app.services.emoji_pack_service import EmojiPackService
+from app.services.hot_topic_service import HotTopicService
 from app.services.iconify_service import IconifyService
 from app.services.image_search_service import ImageSearchService
 from app.services.image_service_strategy import ImageResult, ImageServiceStrategy
@@ -22,6 +23,7 @@ __all__ = [
     "ArticleService",
     "CosService",
     "EmojiPackService",
+    "HotTopicService",
     "IconifyService",
     "ImageResult",
     "ImageSearchService",

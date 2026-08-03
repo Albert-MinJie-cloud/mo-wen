@@ -45,19 +45,9 @@ class NanoBananaService(ImageSearchService):
             ImageData 包含图片字节数据，生成失败返回 None
         """
         try:
-            # 构建图片配置
-            image_config_params = {"aspect_ratio": self.aspect_ratio}
-
-            # Gemini 3 Pro Image 支持更高分辨率
-            if self.model and "gemini-3-pro" in self.model:
-                image_config_params["image_size"] = self.image_size
-
-            # 使用 types.ImageConfig 构建配置对象
-            image_config = types.ImageConfig(**image_config_params)
-
             # 构建生成配置
             config = types.GenerateContentConfig(
-                response_modalities=["TEXT", "IMAGE"], image_config=image_config
+                response_modalities=["TEXT", "IMAGE"],
             )
 
             logger.info(
