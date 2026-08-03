@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from app.schemas import PageRequest
+from app.schemas.common import PageRequest
 
 
 class ArticleCreateRequest(BaseModel):
