@@ -1,9 +1,3 @@
-/**
- * SSE 工具函数
- * @author <a href="https://codefather.cn">编程导航学习圈</a>
-
- */
-
 export interface SSEMessage {
   type: string;
   data?: any;
@@ -33,7 +27,12 @@ export const connectSSE = (
       onMessage(message);
 
       // 检查是否完成
-      if (message.type === "ALL_COMPLETE" || message.type === "ERROR" || message.type === "TITLES_GENERATED" || message.type === "OUTLINE_GENERATED") {
+      if (
+        message.type === "ALL_COMPLETE" ||
+        message.type === "ERROR" ||
+        message.type === "TITLES_GENERATED" ||
+        message.type === "OUTLINE_GENERATED"
+      ) {
         eventSource.close();
         onComplete?.();
       }
