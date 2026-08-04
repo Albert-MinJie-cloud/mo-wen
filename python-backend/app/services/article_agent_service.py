@@ -358,32 +358,47 @@ class ArticleAgentService:
 
         return "".join(content_builder)
 
+    @staticmethod
+    def _extract_json(content: str) -> str:
+        """去掉 markdown 代码块包裹，提取纯 JSON"""
+        text = content.strip()
+        if text.startswith("```"):
+            lines = text.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            text = "\n".join(lines).strip()
+        return text
+
     def _parse_json_response(self, content: str, name: str) -> dict:
         """解析 JSON 响应"""
+        text = self._extract_json(content)
         try:
-            result = json.loads(content)
+            result = json.loads(text)
             if not isinstance(result, dict):
                 raise ValueError("响应不是 JSON 对象")
             return result
         except json.JSONDecodeError as e:
-            logger.error(f"{name}解析失败, content={content}, error={e}")
+            logger.error(f"{name}解析失败, content={text[:500]}, error={e}")
             raise RuntimeError(f"{name}解析失败")
         except ValueError as e:
-            logger.error(f"{name}解析失败, content={content}, error={e}")
+            logger.error(f"{name}解析失败, content={text[:500]}, error={e}")
             raise RuntimeError(f"{name}解析失败")
 
     def _parse_json_list_response(self, content: str, name: str) -> list:
         """解析 JSON 数组响应"""
+        text = self._extract_json(content)
         try:
-            result = json.loads(content)
+            result = json.loads(text)
             if not isinstance(result, list):
                 raise ValueError("响应不是 JSON 数组")
             return result
         except json.JSONDecodeError as e:
-            logger.error(f"{name}解析失败, content={content}, error={e}")
+            logger.error(f"{name}解析失败, content={text[:500]}, error={e}")
             raise RuntimeError(f"{name}解析失败")
         except ValueError as e:
-            logger.error(f"{name}解析失败, content={content}, error={e}")
+            logger.error(f"{name}解析失败, content={text[:500]}, error={e}")
             raise RuntimeError(f"{name}解析失败")
 
     def _build_image_result(

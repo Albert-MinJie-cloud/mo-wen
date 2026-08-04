@@ -34,6 +34,7 @@ const isVipUser = computed(() => checkIsVip(loginUserStore.loginUser));
 // ============ 核心状态 ============
 const isCreating = ref(false);
 const isCompleted = ref(false);
+const hasError = ref(false);
 const taskId = ref("");
 const errorMessage = ref("");
 
@@ -87,6 +88,7 @@ const canSubmit = computed(() => topic.value.trim().length > 0 && !isCreating.va
 const doneCount = computed(() => agentSteps.filter((s) => s.status === "done").length);
 const totalSteps = computed(() => agentSteps.length);
 const currentAgent = computed(() => agentSteps.find((s) => s.status === "processing"));
+const currentAgentKey = computed(() => currentAgent.value?.key ?? "");
 
 const currentAgentTitle = computed(() => currentAgent.value?.title);
 
@@ -225,7 +227,10 @@ function handleSSEMessage(data: SSEMessage) {
       const active = agentSteps.find((s) => s.status === "processing");
       if (active) updateAgentStep(active.key, "error");
       errorMessage.value = data.message || "生成过程出错";
-      message.error(errorMessage.value);
+      isCreating.value = false;
+      hasError.value = true;
+      closeSSE(eventSource.value);
+      eventSource.value = null;
       break;
   }
 }
@@ -269,7 +274,8 @@ async function confirmTitle() {
       onError: () => {
         stopTimer();
         isCreating.value = false;
-        message.error("连接中断，请刷新重试");
+        hasError.value = true;
+        errorMessage.value = "连接中断，请刷新重试";
       },
       onComplete: () => {
         eventSource.value = null;
@@ -305,7 +311,8 @@ async function confirmOutline() {
       onError: () => {
         stopTimer();
         isCreating.value = false;
-        message.error("连接中断，请刷新重试");
+        hasError.value = true;
+        errorMessage.value = "连接中断，请刷新重试";
       },
       onComplete: () => {
         eventSource.value = null;
@@ -421,7 +428,8 @@ async function startCreate() {
         onError: () => {
           stopTimer();
           isCreating.value = false;
-          message.error("连接中断，请刷新重试");
+          hasError.value = true;
+          errorMessage.value = "连接中断，请刷新重试";
         },
         onComplete: () => {
           eventSource.value = null;
@@ -433,8 +441,8 @@ async function startCreate() {
   } catch (e: any) {
     stopTimer();
     isCreating.value = false;
+    hasError.value = true;
     errorMessage.value = e?.message || "创建任务失败，请重试";
-    message.error(errorMessage.value);
   }
 }
 
@@ -461,6 +469,7 @@ function resetState() {
   stopTimer();
   isCreating.value = false;
   isCompleted.value = false;
+  hasError.value = false;
   topic.value = "";
   style.value = null;
   enabledImageMethods.value = [];
@@ -515,6 +524,8 @@ function viewInList() {
         @start-create="startCreate"
         :is-creating="isCreating"
         :is-completed="isCompleted"
+        :has-error="hasError"
+        :error-message="errorMessage"
         :title-options="titleOptions"
         :selected-title-index="selectedTitleIndex"
         @update:selected-title-index="selectedTitleIndex = $event"
@@ -536,6 +547,7 @@ function viewInList() {
         :is-confirming-outline="isConfirmingOutline"
         :loading-message="loadingMessage"
         :is-generating-images="isGeneratingImages"
+        :current-agent-key="currentAgentKey"
         @ai-modify-outline="aiModifyOutline"
         @add-section="addSection"
         @remove-section="removeSection"
@@ -550,6 +562,7 @@ function viewInList() {
         :full-content-html="fullContentHtml"
         @reset-state="resetState"
         @view-in-list="viewInList"
+        @retry-create="startCreate"
       />
 
       <RightPanel

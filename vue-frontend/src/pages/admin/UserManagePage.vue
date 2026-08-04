@@ -46,14 +46,15 @@
           class="user-table"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.dataIndex === 'userAvatar'">
+            <!-- 头像暂时隐藏 -->
+            <!-- <template v-if="column.dataIndex === 'userAvatar'">
               <a-avatar
                 :src="record.userAvatar"
                 :size="48"
                 class="user-avatar"
               />
-            </template>
-            <template v-else-if="column.dataIndex === 'userRole'">
+            </template> -->
+            <template v-if="column.dataIndex === 'userRole'">
               <a-tag
                 v-if="record.userRole === 'admin'"
                 color="purple"
@@ -106,10 +107,11 @@ const columns = [
     title: "用户名",
     dataIndex: "userName",
   },
-  {
-    title: "头像",
-    dataIndex: "userAvatar",
-  },
+  // 头像列暂时隐藏，后续接入头像配置后再展示
+  // {
+  //   title: "头像",
+  //   dataIndex: "userAvatar",
+  // },
   {
     title: "用户角色",
     dataIndex: "userRole",

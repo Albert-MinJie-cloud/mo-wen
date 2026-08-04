@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CloseCircleFilled } from "@ant-design/icons-vue";
 import TopicForm from "./TopicForm.vue";
 import TitleSelector from "./TitleSelector.vue";
 import OutlineStream from "./OutlineStream.vue";
@@ -17,6 +18,8 @@ const props = withDefaults(
     // 流式状态
     isCreating?: boolean;
     isCompleted?: boolean;
+    hasError?: boolean;
+    errorMessage?: string;
     titleOptions?: API.TitleOption[];
     selectedTitleIndex?: number;
     showTitleConfirm?: boolean;
@@ -34,6 +37,7 @@ const props = withDefaults(
     contentText?: string;
     generatedImages?: any[];
     isGeneratingImages?: boolean;
+    currentAgentKey?: string;
     // 完成状态
     article?: API.ArticleVO | null;
     fullContentHtml?: string;
@@ -46,6 +50,8 @@ const props = withDefaults(
     isVip: false,
     isCreating: false,
     isCompleted: false,
+    hasError: false,
+    errorMessage: "",
     titleOptions: () => [],
     selectedTitleIndex: -1,
     showTitleConfirm: false,
@@ -63,6 +69,7 @@ const props = withDefaults(
     contentText: "",
     generatedImages: () => [],
     isGeneratingImages: false,
+    currentAgentKey: "",
     article: null,
     fullContentHtml: "",
   },
@@ -93,6 +100,7 @@ const emit = defineEmits<{
   // 完成后操作
   (e: "resetState"): void;
   (e: "viewInList"): void;
+  (e: "retryCreate"): void;
 }>();
 </script>
 
@@ -100,7 +108,7 @@ const emit = defineEmits<{
   <main class="center-panel">
     <!-- 状态一：输入表单 -->
     <TopicForm
-      v-if="!isCreating && !isCompleted"
+      v-if="!isCreating && !isCompleted && !hasError"
       :topic="topic"
       @update:topic="emit('update:topic', $event)"
       :style="style"
@@ -111,6 +119,19 @@ const emit = defineEmits<{
       :is-vip="isVip"
       @start-create="emit('startCreate')"
     />
+
+    <!-- 状态：生成失败 -->
+    <div v-if="hasError" class="center-card error-view">
+      <div class="error-icon">
+        <CloseCircleFilled />
+      </div>
+      <h3 class="error-title">文章生成失败</h3>
+      <p class="error-detail">{{ errorMessage || '未知错误，请重试' }}</p>
+      <div class="error-actions">
+        <a-button type="primary" @click="emit('retryCreate')">重试</a-button>
+        <a-button @click="emit('resetState')">返回</a-button>
+      </div>
+    </div>
 
     <!-- 状态二：流式输出 -->
     <div v-if="isCreating && !isCompleted" class="center-card streaming-view">
@@ -166,6 +187,7 @@ const emit = defineEmits<{
         :content-text="contentText"
         :generated-images="generatedImages"
         :is-generating-images="isGeneratingImages"
+        :current-agent-key="currentAgentKey"
       />
 
       <!-- 空状态 -->
@@ -243,5 +265,39 @@ const emit = defineEmits<{
   padding: 80px 20px;
   color: var(--color-text-muted);
   font-size: 15px;
+}
+
+.error-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 80px 40px;
+}
+
+.error-icon {
+  font-size: 56px;
+  color: var(--color-error);
+  margin-bottom: 16px;
+}
+
+.error-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 8px;
+}
+
+.error-detail {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin: 0 0 24px;
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+.error-actions {
+  display: flex;
+  gap: 12px;
 }
 </style>

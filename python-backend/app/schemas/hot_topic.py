@@ -11,6 +11,9 @@ class HotTopicVO(BaseModel):
     id: int
     emoji: str
     text: str = Field(alias="topicText")
+    viral_score: int = Field(alias="viralScore", default=5)
+    difficulty: int = Field(default=3)
+    platforms: str = Field(default="")
 
     model_config = ConfigDict(populate_by_name=True)
 

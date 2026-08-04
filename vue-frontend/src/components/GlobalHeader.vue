@@ -58,13 +58,14 @@
 
           <a-dropdown>
             <a-space class="user-info">
-              <a-avatar
+              <!-- 头像暂时隐藏，后续接入头像配置后再展示 -->
+              <!-- <a-avatar
                 :src="loginUserStore.loginUser.userAvatar"
                 :size="36"
                 class="user-avatar"
-              />
-              <span class="user-name">
-                {{ loginUserStore.loginUser.userName ?? "无名" }}
+              /> -->
+              <span :class="['role-tag', loginUserStore.loginUser.userRole]">
+                {{ roleLabel }}
               </span>
             </a-space>
             <template #overlay>
@@ -130,6 +131,11 @@ router.afterEach((to) => {
 
 // 判断是否为 VIP（管理员也视为 VIP）
 const isVip = computed(() => checkIsVip(loginUserStore.loginUser));
+
+// 角色标签
+const roleLabel = computed(() =>
+  loginUserStore.loginUser.userRole === "admin" ? "管理员" : "用户"
+);
 
 // 菜单配置项
 const originItems = [
@@ -374,10 +380,25 @@ const doLogout = async () => {
   border: 2px solid var(--color-border);
 }
 
-.user-name {
-  font-weight: 500;
-  color: var(--color-text);
-  font-size: 14px;
+.role-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  line-height: 1.6;
+  letter-spacing: 0.3px;
+
+  &.admin {
+    color: #7c3aed;
+    background: rgba(124, 58, 237, 0.1);
+  }
+
+  &.user,
+  &.vip {
+    color: #2563eb;
+    background: rgba(37, 99, 235, 0.1);
+  }
 }
 
 .dropdown-menu {
@@ -428,8 +449,5 @@ const doLogout = async () => {
     padding: 8px 12px;
   }
 
-  .user-name {
-    display: none;
-  }
 }
 </style>

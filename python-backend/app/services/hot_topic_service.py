@@ -60,7 +60,7 @@ class HotTopicService:
         """获取当前月份热门选题"""
         rows = await database.fetch_all(
             query="""
-                SELECT id, topicText, emoji, updateTime
+                SELECT id, topicText, emoji, viralScore, difficulty, platforms, updateTime
                 FROM hot_topic
                 WHERE year = :year AND month = :month AND isActive = 1 AND isDelete = 0
                 ORDER BY sortOrder ASC, id ASC
@@ -84,12 +84,15 @@ class HotTopicService:
             for i, item in enumerate(topics):
                 await database.execute(
                     query="""
-                        INSERT INTO hot_topic (topicText, emoji, year, month, source, sortOrder)
-                        VALUES (:topicText, :emoji, :year, :month, 'AI', :sortOrder)
+                        INSERT INTO hot_topic (topicText, emoji, year, month, source, viralScore, difficulty, platforms, sortOrder)
+                        VALUES (:topicText, :emoji, :year, :month, 'AI', :viralScore, :difficulty, :platforms, :sortOrder)
                     """,
                     values={
                         "topicText": item.get("topicText", ""),
                         "emoji": item.get("emoji", "🔥"),
+                        "viralScore": item.get("viralScore", 5),
+                        "difficulty": item.get("difficulty", 3),
+                        "platforms": item.get("platforms", ""),
                         "year": year,
                         "month": month,
                         "sortOrder": i,

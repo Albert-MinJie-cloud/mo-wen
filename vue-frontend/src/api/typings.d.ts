@@ -239,6 +239,15 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponseHotTopicResponse_ = {
+    /** Code 状态码 */
+    code?: number;
+    /** Data 响应数据 */
+    data?: HotTopicResponse | null;
+    /** Message 响应消息 */
+    message?: string;
+  };
+
   type BaseResponseUserVO_ = {
     /** Code 状态码 */
     code?: number;
@@ -499,5 +508,27 @@ declare namespace API {
     msg: string;
     /** Error Type */
     type: string;
+  };
+
+  type HotTopicVO = {
+    /** Id */
+    id: number;
+    /** Emoji */
+    emoji: string;
+    /** Topictext */
+    topicText: string;
+    /** Viralscore */
+    viralScore: number;
+    /** Difficulty */
+    difficulty: number;
+    /** Platforms */
+    platforms: string;
+  };
+
+  type HotTopicResponse = {
+    /** Topics */
+    topics: HotTopicVO[];
+    /** Updatetime */
+    updateTime: string;
   };
 }

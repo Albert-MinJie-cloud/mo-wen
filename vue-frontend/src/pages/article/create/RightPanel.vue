@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
 import {
   ClockCircleOutlined,
   InfoCircleOutlined,
   CheckCircleFilled,
   BulbOutlined,
-  ArrowRightOutlined,
   CrownOutlined,
+  FireOutlined,
 } from "@ant-design/icons-vue";
 import { USER_ROLE_ADMIN, USER_ROLE_VIP } from "@/constants/user";
+import { getHotTopicsApiTopicHotGet } from "@/api/topic";
 
 const props = withDefaults(
   defineProps<{
@@ -51,15 +52,27 @@ const userIsVip = computed(() => isAdmin.value || props.loginUser?.userRole === 
 const quota = computed(() => props.loginUser?.quota ?? 0);
 const hasQuota = computed(() => isAdmin.value || userIsVip.value || quota.value > 0);
 
-// 热门选题
-const hotTopics = [
-  { emoji: "🔥", text: "2026年最值得学习的5个前端框架" },
-  { emoji: "💡", text: "程序员如何通过写作提升影响力" },
-  { emoji: "🚀", text: "从零到百万用户的产品增长策略" },
-  { emoji: "🤖", text: "AI 时代开发者如何保持竞争力" },
-  { emoji: "📈", text: "小红书运营技巧：30天涨粉10万" },
-  { emoji: "🎯", text: "副业赚钱的7种实战方法" },
-];
+// 热门选题 - 从 API 获取
+const hotTopics = ref<API.HotTopicVO[]>([]);
+const hotTopicsLoading = ref(false);
+
+async function fetchHotTopics() {
+  hotTopicsLoading.value = true;
+  try {
+    const res = await getHotTopicsApiTopicHotGet();
+    if (res.data.code === 0 && res.data.data?.topics) {
+      hotTopics.value = res.data.data.topics;
+    }
+  } catch {
+    // 静默失败
+  } finally {
+    hotTopicsLoading.value = false;
+  }
+}
+
+onMounted(() => {
+  fetchHotTopics();
+});
 </script>
 
 <template>
@@ -170,17 +183,21 @@ const hotTopics = [
       <div class="panel-header">
         <BulbOutlined class="panel-header-icon" />
         <span>热门选题</span>
+        <span v-if="hotTopicsLoading" class="loading-hint">加载中...</span>
       </div>
       <div class="hot-topics">
         <div
           v-for="(item, i) in hotTopics"
-          :key="i"
+          :key="item.id || i"
           class="hot-topic-item"
-          @click="emit('selectHotTopic', item.text)"
+          @click="emit('selectHotTopic', item.topicText)"
         >
           <span class="hot-emoji">{{ item.emoji }}</span>
-          <span class="hot-text">{{ item.text }}</span>
-          <ArrowRightOutlined class="hot-arrow" />
+          <span class="hot-text">{{ item.topicText }}</span>
+          <span class="hot-score">
+            <FireOutlined />
+            {{ item.viralScore }}
+          </span>
         </div>
       </div>
     </div>
@@ -412,38 +429,36 @@ const hotTopics = [
 
 /* 热门选题 */
 .hot-topics-card {
-  background: var(--color-background-tertiary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 16px;
   margin-bottom: 20px;
+}
+
+.loading-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-left: auto;
 }
 
 .hot-topics {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .hot-topic-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border-light);
-  background: var(--color-background);
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition-fast);
   color: var(--color-text);
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .hot-topic-item:hover {
   background: var(--color-background-secondary);
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  transform: translateX(2px);
 }
 
 .hot-emoji {
@@ -452,8 +467,23 @@ const hotTopics = [
 }
 
 .hot-text {
-  line-height: 1.4;
   flex: 1;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.5;
+  max-height: 3em;
+}
+
+.hot-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #f97316;
+  flex-shrink: 0;
 }
 
 .hot-arrow {

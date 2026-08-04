@@ -21,6 +21,15 @@ class HotTopic(Base):
     source = Column(
         String(50), nullable=False, default="AI", comment="来源：AI/MANUAL/DATA"
     )
+    viral_score = Column(
+        "viralScore", SmallInteger, nullable=False, default=5, comment="爆款潜力指数 1-10"
+    )
+    difficulty = Column(
+        SmallInteger, nullable=False, default=3, comment="写作难度 1-5"
+    )
+    platforms = Column(
+        String(200), nullable=False, default="", comment="适配平台，逗号分隔"
+    )
     sort_order = Column(
         "sortOrder", SmallInteger, nullable=False, default=0, comment="排序"
     )
