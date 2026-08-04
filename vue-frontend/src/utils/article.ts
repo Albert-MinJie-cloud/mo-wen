@@ -26,7 +26,7 @@ export const IMAGE_METHOD_OPTIONS = [
   { value: "MERMAID", label: "Mermaid", desc: "代码驱动图表", vipOnly: false },
   { value: "ICONIFY", label: "Iconify", desc: "开源图标集", vipOnly: false },
   { value: "EMOJI_PACK", label: "表情包", desc: "趣味表情配图", vipOnly: false },
-  { value: "NANO_BANANA", label: "AI 生图", desc: "AI 生成图片", vipOnly: true },
+  // { value: "NANO_BANANA", label: "AI 生图", desc: "AI 生成图片", vipOnly: true },
   { value: "SVG_DIAGRAM", label: "SVG 图表", desc: "矢量数据图表", vipOnly: true },
 ] as const;
 

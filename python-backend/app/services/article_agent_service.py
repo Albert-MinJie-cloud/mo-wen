@@ -37,6 +37,7 @@ class ArticleAgentService:
         self.client = AsyncOpenAI(
             api_key=settings.dashscope_api_key,
             base_url=settings.dashscope_base_url,
+            timeout=120.0,
         )
         self.model = settings.dashscope_model
 
