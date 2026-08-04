@@ -87,7 +87,7 @@ function onToggleMethod(method: string, vipOnly: boolean) {
     <div class="form-section">
       <label class="form-label">
         <PictureOutlined /> 配图方式
-        <span class="label-hint">（留空支持全部）</span>
+        <span class="label-hint">（必选，至少选择一种）</span>
       </label>
       <div class="image-method-chips">
         <span

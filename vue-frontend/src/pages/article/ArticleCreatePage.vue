@@ -83,7 +83,7 @@ const fullContentHtml = ref("");
 
 // ============ 计算属性 ============
 const eventSource = ref<EventSource | null>(null);
-const canSubmit = computed(() => topic.value.trim().length > 0 && !isCreating.value);
+const canSubmit = computed(() => topic.value.trim().length > 0 && enabledImageMethods.value.length > 0 && !isCreating.value);
 
 const doneCount = computed(() => agentSteps.filter((s) => s.status === "done").length);
 const totalSteps = computed(() => agentSteps.length);
