@@ -180,3 +180,145 @@ createWebHistory → access.ts（首次获取用户）→ 路由守卫（/admin/
 - Conventional Commits 规范
 - SQL 迁移脚本独立管理
 - 无 Docker/CI/测试框架，轻量开发
+
+## 系统架构图
+
+```mermaid
+graph TD
+    %% ========== 样式定义 ==========
+    classDef client fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
+    classDef access fill:#e8f5e9,stroke:#388e3c,color:#1b5e20
+    classDef api fill:#fff8e1,stroke:#f9a825,color:#e65100
+    classDef biz fill:#fff3e0,stroke:#fb8c00,color:#bf360c
+    classDef agent fill:#fce4ec,stroke:#d81b60,color:#880e4f
+    classDef data fill:#ede7f6,stroke:#5e35b1,color:#311b92
+    classDef external fill:#eceff1,stroke:#546e7a,color:#263238
+
+    %% ========== 客户端层 ==========
+    subgraph CLIENT[🖥️ 客户端层]
+        direction LR
+        BROWSER[浏览器<br/>Vue 3 + Vite + TypeScript<br/>Ant Design Vue 4]
+    end
+    class CLIENT client
+
+    %% ========== 接入层 ==========
+    subgraph ACCESS[🌐 接入层]
+        VITE[Vite Dev Server<br/>开发代理 :5173 → :8567]
+        NGINX[Nginx<br/>生产反向代理 / 静态资源]
+    end
+    class ACCESS access
+
+    %% ========== 接口层 ==========
+    subgraph API[📡 接口层 - FastAPI Routers]
+        R_USER[/api/user<br/>用户注册登录/]
+        R_ARTICLE[/api/article<br/>文章创建/进度SSE/]
+        R_PAYMENT[/api/payment<br/>VIP支付会话/]
+        R_WEBHOOK[/api/webhook<br/>Stripe回调验签/]
+        R_STATS[/api/statistics<br/>数据统计仪表盘/]
+        R_TOPIC[/api/topic<br/>热门选题生成/]
+        R_HEALTH[/api/health<br/>健康检查/]
+    end
+    class API api
+
+    %% ========== 业务层 ==========
+    subgraph BIZ[⚙️ 业务层 - Services]
+        S_USER[UserService<br/>用户注册/登录/鉴权]
+        S_ARTICLE[ArticleService<br/>文章CRUD/阶段切换]
+        S_ASYNC[ArticleAsyncService<br/>异步任务编排/SSE推送]
+        S_PAYMENT[PaymentService<br/>Stripe会话/订单处理]
+        S_LOG[AgentLogService<br/>智能体执行日志]
+        S_COS[CosService<br/>腾讯云COS上传]
+        S_IMG_STRATEGY[ImageServiceStrategy<br/>图片源策略/故障转移]
+    end
+    class BIZ biz
+
+    %% ========== 智能体层 ==========
+    subgraph AGENT[🤖 智能体层 - 5 Agent Pipeline]
+        A1[Agent 1 标题生成<br/>选题分析 → 吸睛标题方案]
+        A2[Agent 2 大纲生成<br/>流式输出文章骨架结构]
+        A3[Agent 3 正文撰写<br/>逐段流式生成正文内容]
+        A4[Agent 4 配图分析<br/>分析配图需求与位置]
+        A5[Agent 5 配图生成<br/>多源搜索/生成配图]
+        AMERGE[Merge 图文合成<br/>Markdown → HTML 嵌入图片]
+    end
+    class AGENT agent
+
+    %% ========== 数据层 ==========
+    subgraph DATA[🗄️ 数据层]
+        MYSQL[MySQL<br/>用户/文章/日志持久化<br/>isDelete 软删除]
+        REDIS[Redis<br/>Session 会话管理<br/>session:uuid → JSON]
+        COS[腾讯云 COS<br/>图片/静态资源存储]
+    end
+    class DATA data
+
+    %% ========== 外部服务层 ==========
+    subgraph EXTERNAL[🔗 外部服务]
+        OPENAI[OpenAI 兼容 API<br/>LLM 文本生成<br/>stream=True 流式输出]
+        GEMINI[Google Gemini<br/>AI 图片生成<br/>Nano Banana 模型]
+        STRIPE[Stripe<br/>支付网关/Webhook]
+        PEXELS[Pexels<br/>免费图片搜索]
+        MERMAID[Mermaid CLI<br/>流程图/图表渲染]
+        ICON[Iconify / EmojiPack<br/>图标与表情素材]
+    end
+    class EXTERNAL external
+
+    %% ========== 箭头流向 ==========
+    BROWSER --> VITE
+    BROWSER --> NGINX
+    VITE --> R_ARTICLE
+    VITE --> R_USER
+    VITE --> R_PAYMENT
+    VITE --> R_WEBHOOK
+    VITE --> R_STATS
+    VITE --> R_TOPIC
+    VITE --> R_HEALTH
+    NGINX --> R_ARTICLE
+    NGINX --> R_USER
+    NGINX --> R_PAYMENT
+    NGINX --> R_WEBHOOK
+    NGINX --> R_STATS
+    NGINX --> R_TOPIC
+    NGINX --> R_HEALTH
+
+    R_USER --> S_USER
+    R_ARTICLE --> S_ARTICLE
+    R_ARTICLE --> S_ASYNC
+    R_ARTICLE --> S_LOG
+    R_PAYMENT --> S_PAYMENT
+    R_WEBHOOK --> S_PAYMENT
+    R_STATS --> S_LOG
+    R_TOPIC --> S_ARTICLE
+
+    S_ARTICLE --> S_ASYNC
+    S_ASYNC --> A1
+    A1 --> A2
+    A2 --> A3
+    A3 --> A4
+    A4 --> A5
+    A5 --> AMERGE
+
+    S_ARTICLE --> S_COS
+    S_ASYNC --> S_COS
+    A5 --> S_IMG_STRATEGY
+    S_IMG_STRATEGY --> S_COS
+    S_COS --> COS
+
+    S_USER --> MYSQL
+    S_USER --> REDIS
+    S_ARTICLE --> MYSQL
+    S_PAYMENT --> MYSQL
+    S_LOG --> MYSQL
+    S_PAYMENT --> STRIPE
+
+    A1 --> OPENAI
+    A2 --> OPENAI
+    A3 --> OPENAI
+
+    A4 --> GEMINI
+    A4 --> PEXELS
+    A5 --> GEMINI
+    A5 --> PEXELS
+    A5 --> MERMAID
+    A5 --> ICON
+```
+
