@@ -184,141 +184,111 @@ createWebHistory → access.ts（首次获取用户）→ 路由守卫（/admin/
 ## 系统架构图
 
 ```mermaid
-graph TD
-    %% ========== 样式定义 ==========
+flowchart TD
+    %% ========== 样式 ==========
     classDef client fill:#e3f2fd,stroke:#1976d2,color:#0d47a1
     classDef access fill:#e8f5e9,stroke:#388e3c,color:#1b5e20
-    classDef api fill:#fff8e1,stroke:#f9a825,color:#e65100
-    classDef biz fill:#fff3e0,stroke:#fb8c00,color:#bf360c
-    classDef agent fill:#fce4ec,stroke:#d81b60,color:#880e4f
-    classDef data fill:#ede7f6,stroke:#5e35b1,color:#311b92
-    classDef external fill:#eceff1,stroke:#546e7a,color:#263238
+    classDef api    fill:#fff8e1,stroke:#f9a825,color:#e65100
+    classDef biz    fill:#fff3e0,stroke:#fb8c00,color:#bf360c
+    classDef agent  fill:#fce4ec,stroke:#d81b60,color:#880e4f
+    classDef data   fill:#ede7f6,stroke:#5e35b1,color:#311b92
+    classDef ext    fill:#eceff1,stroke:#546e7a,color:#263238
 
     %% ========== 客户端层 ==========
-    subgraph CLIENT[🖥️ 客户端层]
-        direction LR
-        BROWSER[浏览器<br/>Vue 3 + Vite + TypeScript<br/>Ant Design Vue 4]
+    subgraph L1["🖥 客户端"]
+        B["浏览器 Vue3 + Vite + TS · Ant Design Vue 4"]
     end
-    class CLIENT client
 
     %% ========== 接入层 ==========
-    subgraph ACCESS[🌐 接入层]
-        VITE[Vite Dev Server<br/>开发代理 :5173 → :8567]
-        NGINX[Nginx<br/>生产反向代理 / 静态资源]
+    subgraph L2["🌐 接入层"]
+        direction LR
+        V["Vite Dev Server  :5173"]
+        N["Nginx  生产反向代理"]
     end
-    class ACCESS access
 
     %% ========== 接口层 ==========
-    subgraph API[📡 接口层 - FastAPI Routers]
-        R_USER[/api/user<br/>用户注册登录/]
-        R_ARTICLE[/api/article<br/>文章创建/进度SSE/]
-        R_PAYMENT[/api/payment<br/>VIP支付会话/]
-        R_WEBHOOK[/api/webhook<br/>Stripe回调验签/]
-        R_STATS[/api/statistics<br/>数据统计仪表盘/]
-        R_TOPIC[/api/topic<br/>热门选题生成/]
-        R_HEALTH[/api/health<br/>健康检查/]
+    subgraph L3["📡 接口层 — FastAPI"]
+        direction LR
+        R1["/api/user 用户"]
+        R2["/api/article 文章·SSE"]
+        R3["/api/payment 支付"]
+        R4["/api/webhook 回调"]
+        R5["/api/statistics 统计"]
+        R6["/api/topic 选题"]
+        R7["/api/health 健康"]
     end
-    class API api
 
     %% ========== 业务层 ==========
-    subgraph BIZ[⚙️ 业务层 - Services]
-        S_USER[UserService<br/>用户注册/登录/鉴权]
-        S_ARTICLE[ArticleService<br/>文章CRUD/阶段切换]
-        S_ASYNC[ArticleAsyncService<br/>异步任务编排/SSE推送]
-        S_PAYMENT[PaymentService<br/>Stripe会话/订单处理]
-        S_LOG[AgentLogService<br/>智能体执行日志]
-        S_COS[CosService<br/>腾讯云COS上传]
-        S_IMG_STRATEGY[ImageServiceStrategy<br/>图片源策略/故障转移]
+    subgraph L4["⚙ 业务层 — Services"]
+        direction LR
+        S1["UserService 用户鉴权"]
+        S2["ArticleService CRUD"]
+        S3["ArticleAsyncService 异步编排·SSE"]
+        S4["PaymentService Stripe"]
+        S5["AgentLogService 日志"]
+        S6["CosService COS上传"]
+        S7["ImageServiceStrategy 图片策略"]
     end
-    class BIZ biz
 
     %% ========== 智能体层 ==========
-    subgraph AGENT[🤖 智能体层 - 5 Agent Pipeline]
-        A1[Agent 1 标题生成<br/>选题分析 → 吸睛标题方案]
-        A2[Agent 2 大纲生成<br/>流式输出文章骨架结构]
-        A3[Agent 3 正文撰写<br/>逐段流式生成正文内容]
-        A4[Agent 4 配图分析<br/>分析配图需求与位置]
-        A5[Agent 5 配图生成<br/>多源搜索/生成配图]
-        AMERGE[Merge 图文合成<br/>Markdown → HTML 嵌入图片]
+    subgraph L5["🤖 智能体层 — 5-Agent Pipeline"]
+        direction LR
+        AG1["Agent1 标题方案"]
+        AG2["Agent2 大纲生成"]
+        AG3["Agent3 正文撰写"]
+        AG4["Agent4 配图分析"]
+        AG5["Agent5 配图生成"]
+        MG["Merge 图文合成"]
     end
-    class AGENT agent
 
-    %% ========== 数据层 ==========
-    subgraph DATA[🗄️ 数据层]
-        MYSQL[MySQL<br/>用户/文章/日志持久化<br/>isDelete 软删除]
-        REDIS[Redis<br/>Session 会话管理<br/>session:uuid → JSON]
-        COS[腾讯云 COS<br/>图片/静态资源存储]
+    %% ========== 数据层 & 外部服务（并行） ==========
+    subgraph L6["🗄 数据层"]
+        direction TB
+        DB["MySQL 持久化 · 软删除"]
+        RD["Redis 会话缓存"]
+        COS["腾讯云 COS 图片存储"]
     end
-    class DATA data
 
-    %% ========== 外部服务层 ==========
-    subgraph EXTERNAL[🔗 外部服务]
-        OPENAI[OpenAI 兼容 API<br/>LLM 文本生成<br/>stream=True 流式输出]
-        GEMINI[Google Gemini<br/>AI 图片生成<br/>Nano Banana 模型]
-        STRIPE[Stripe<br/>支付网关/Webhook]
-        PEXELS[Pexels<br/>免费图片搜索]
-        MERMAID[Mermaid CLI<br/>流程图/图表渲染]
-        ICON[Iconify / EmojiPack<br/>图标与表情素材]
+    subgraph L7["🔗 外部服务"]
+        direction TB
+        E1["OpenAI API LLM流式"]
+        E2["Gemini NanoBanana"]
+        E3["Stripe 支付网关"]
+        E4["Pexels 图片搜索"]
+        E5["Mermaid CLI 图表"]
+        E6["Iconify·EmojiPack"]
     end
-    class EXTERNAL external
 
-    %% ========== 箭头流向 ==========
-    BROWSER --> VITE
-    BROWSER --> NGINX
-    VITE --> R_ARTICLE
-    VITE --> R_USER
-    VITE --> R_PAYMENT
-    VITE --> R_WEBHOOK
-    VITE --> R_STATS
-    VITE --> R_TOPIC
-    VITE --> R_HEALTH
-    NGINX --> R_ARTICLE
-    NGINX --> R_USER
-    NGINX --> R_PAYMENT
-    NGINX --> R_WEBHOOK
-    NGINX --> R_STATS
-    NGINX --> R_TOPIC
-    NGINX --> R_HEALTH
+    %% ========== 分层样式 ==========
+    class L1,B client
+    class L2,V,N access
+    class L3,R1,R2,R3,R4,R5,R6,R7 api
+    class L4,S1,S2,S3,S4,S5,S6,S7 biz
+    class L5,AG1,AG2,AG3,AG4,AG5,MG agent
+    class L6,DB,RD,COS data
+    class L7,E1,E2,E3,E4,E5,E6 ext
 
-    R_USER --> S_USER
-    R_ARTICLE --> S_ARTICLE
-    R_ARTICLE --> S_ASYNC
-    R_ARTICLE --> S_LOG
-    R_PAYMENT --> S_PAYMENT
-    R_WEBHOOK --> S_PAYMENT
-    R_STATS --> S_LOG
-    R_TOPIC --> S_ARTICLE
+    %% ========== 流向 ==========
+    B --> V & N
+    V & N --> R1 & R2 & R3 & R4 & R5 & R6 & R7
 
-    S_ARTICLE --> S_ASYNC
-    S_ASYNC --> A1
-    A1 --> A2
-    A2 --> A3
-    A3 --> A4
-    A4 --> A5
-    A5 --> AMERGE
+    R1 --> S1
+    R2 --> S2 & S3 & S5
+    R3 & R4 --> S4
+    R5 --> S5
+    R6 --> S2
 
-    S_ARTICLE --> S_COS
-    S_ASYNC --> S_COS
-    A5 --> S_IMG_STRATEGY
-    S_IMG_STRATEGY --> S_COS
-    S_COS --> COS
+    S2 --> S3 --> AG1 --> AG2 --> AG3 --> AG4 --> AG5 --> MG
 
-    S_USER --> MYSQL
-    S_USER --> REDIS
-    S_ARTICLE --> MYSQL
-    S_PAYMENT --> MYSQL
-    S_LOG --> MYSQL
-    S_PAYMENT --> STRIPE
+    S2 & S3 --> S6
+    AG5 --> S7 --> S6 --> COS
 
-    A1 --> OPENAI
-    A2 --> OPENAI
-    A3 --> OPENAI
+    S1 --> DB & RD
+    S2 & S4 & S5 --> DB
+    S4 --> E3
 
-    A4 --> GEMINI
-    A4 --> PEXELS
-    A5 --> GEMINI
-    A5 --> PEXELS
-    A5 --> MERMAID
-    A5 --> ICON
+    AG1 & AG2 & AG3 --> E1
+    AG4 & AG5 --> E2 & E4
+    AG5 --> E5 & E6
 ```
 
